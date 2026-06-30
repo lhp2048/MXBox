@@ -1,7 +1,48 @@
 <resources xmlns:xliff="http://schemas.android.com/apk/res-auto">
 
     <!-- App -->
-    <string name="app_name">TV</string>
+    <string name="app_name">MXBox</string>
+    <string name="mx_source_title">Switch Source</string>
+    <string name="mx_source_live_switched">Live source switched: %1$s</string>
+    <string name="mx_source_test">Speed Test</string>
+    <string name="mx_source_testing_prepare">Testing…</string>
+    <string name="mx_source_testing">Testing %1$d/%2$d…</string>
+    <string name="mx_source_testing_parallel">Parallel test %1$d/%2$d (up to %3$d)</string>
+    <string name="mx_source_test_done">Speed test complete</string>
+    <string name="mx_source_test_none">No speed test yet</string>
+    <string name="mx_source_test_last">Last test: %1$s</string>
+    <string name="mx_source_current_none">Not configured</string>
+    <string name="mx_source_current_item">%1$s (%2$s)</string>
+    <string name="mx_source_current_prefix">Current: %1$s</string>
+    <string name="mx_source_badge_current">Current</string>
+    <string name="mx_source_probe_pending">Pending</string>
+    <string name="mx_source_probe_testing">Testing</string>
+    <string name="mx_source_probe_fail">Fail %1$dms</string>
+    <string name="mx_source_testing_item">Testing: %1$s (%2$d/%3$d)</string>
+    <string name="mx_source_add_vod">Add VOD</string>
+    <string name="mx_source_add_live">Add Live</string>
+    <string name="mx_source_manage">Manage</string>
+    <string name="mx_source_manage_title">Manage sources</string>
+    <string name="mx_source_manage_vod">VOD history</string>
+    <string name="mx_source_manage_live">Live history</string>
+    <string name="mx_load_start">Switching: %1$s</string>
+    <string name="mx_load_fetch_config">Fetching config…</string>
+    <string name="mx_load_cache_hit">Using cached config</string>
+    <string name="mx_load_parse_jar">Loading spider…</string>
+    <string name="mx_load_depot_merge">Merging sources %1$d/%2$d…</string>
+    <string name="mx_load_sync_live">Syncing live sources…</string>
+    <string name="mx_load_home_content">Loading home content…</string>
+    <string name="mx_load_spider_invalid">Spider JAR invalid or unavailable. Check the source config.</string>
+    <string name="mx_load_error">Failed: %1$s</string>
+    <string name="mx_setting_subscription">Subscription</string>
+    <string name="mx_setting_sites">Sites</string>
+    <string name="mx_setting_sites_current">%1$s · %2$d sites</string>
+    <string name="mx_setting_sites_count">%1$d sites</string>
+    <string name="mx_depot_loading">Loading %1$d/%2$d: %3$s (%4$d sites found)</string>
+    <string name="mx_setting_sites_loading">Loading sites %1$d/%2$d · %3$d found</string>
+    <string name="mx_home_title">%1$s · %2$s</string>
+    <string name="mx_setting_vod_url">VOD URL</string>
+    <string name="mx_setting_vod_url_empty">Not set, long press to edit</string>
 
     <!-- Live -->
     <string name="live_pass">Pass</string>
@@ -139,6 +180,14 @@
     <string name="setting_choose">Choose</string>
     <string name="setting_off">Off</string>
     <string name="setting_on">On</string>
+    <string name="setting_cast">Cast receiver</string>
+    <string name="setting_cast_device_name">Cast device name</string>
+    <string name="setting_cast_status">Cast status</string>
+    <string name="setting_cast_running">Cast receiver running</string>
+    <string name="setting_cast_stopped">Stopped</string>
+    <string name="setting_cast_hint">Connect phone and TV to the same Wi-Fi. In Bilibili or other apps, tap Cast and select this device name. Disable router AP isolation if the device is not found.</string>
+    <string name="setting_cast_status_info">%1$s · %2$s</string>
+    <string name="cast_device_name_hint">Device name shown on phone</string>
 
     <!-- Backup & Restore -->
     <string name="restore_select">Select backup</string>

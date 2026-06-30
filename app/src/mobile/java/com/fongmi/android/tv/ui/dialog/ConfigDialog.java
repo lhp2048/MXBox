@@ -10,10 +10,12 @@ import android.view.inputmethod.EditorInfo;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
 import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.config.LiveConfig;
+import com.fongmi.android.tv.api.config.MxBoxUserSourceStore;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.api.config.WallConfig;
 import com.fongmi.android.tv.bean.Config;
@@ -29,8 +31,10 @@ public class ConfigDialog extends BaseAlertDialog {
     private DialogConfigBinding binding;
     private boolean append = true;
     private boolean edit;
+    private boolean userSource;
     private String ori;
     private int type;
+    private ConfigListener listener;
 
     public static ConfigDialog create() {
         return new ConfigDialog();
@@ -56,8 +60,19 @@ public class ConfigDialog extends BaseAlertDialog {
         return this;
     }
 
+    public ConfigDialog userSource() {
+        userSource = true;
+        return this;
+    }
+
     public void show(Fragment fragment) {
+        listener = (ConfigListener) fragment;
         show(fragment.getChildFragmentManager(), null);
+    }
+
+    public void show(FragmentActivity activity) {
+        listener = (ConfigListener) activity;
+        show(activity.getSupportFragmentManager(), null);
     }
 
     @Override
@@ -128,13 +143,22 @@ public class ConfigDialog extends BaseAlertDialog {
         String name = binding.name.getText().toString().trim();
         if (edit) Config.find(ori, type).url(url).name(name).update();
         if (url.isEmpty()) Config.delete(ori, type);
-        ((ConfigListener) requireParentFragment()).setConfig(Config.find(url, type));
+        Config config = TextUtils.isEmpty(name) ? Config.find(url, type) : Config.find(url, name, type);
+        if (userSource && !url.isEmpty()) MxBoxUserSourceStore.add(config);
+        getListener().setConfig(config);
         dismiss();
+    }
+
+    private ConfigListener getListener() {
+        if (listener != null) return listener;
+        return (ConfigListener) requireParentFragment();
     }
 
     private final ActivityResultLauncher<Intent> launcher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
         if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null || result.getData().getData() == null) return;
-        ((ConfigListener) requireParentFragment()).setConfig(Config.find("file:/" + FileChooser.getPathFromUri(result.getData().getData()).replace(Path.rootPath(), ""), type));
+        Config config = Config.find("file:/" + FileChooser.getPathFromUri(result.getData().getData()).replace(Path.rootPath(), ""), type);
+        if (userSource) MxBoxUserSourceStore.add(config);
+        getListener().setConfig(config);
         dismiss();
     });
 }

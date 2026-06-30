@@ -40,6 +40,11 @@ public class ConfigAdapter extends RecyclerView.Adapter<ConfigAdapter.ViewHolder
         return this;
     }
 
+    public ConfigAdapter setItems(List<Config> items) {
+        mItems = new java.util.ArrayList<>(items);
+        return this;
+    }
+
     public int remove(Config item) {
         int position = mItems.indexOf(item);
         if (position == -1) return -1;

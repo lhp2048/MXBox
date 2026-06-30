@@ -5,14 +5,21 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.wifi.WifiManager;
+import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
+import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.media3.common.C;
 import androidx.media3.common.Player;
 
 import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.BuildConfig;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.dlna.CastAction;
 import com.fongmi.android.tv.dlna.DLNAAvTransportImpl;
@@ -20,8 +27,11 @@ import com.fongmi.android.tv.dlna.DLNARenderingControlImpl;
 import com.fongmi.android.tv.dlna.DLNAServiceConfiguration;
 import com.fongmi.android.tv.dlna.RenderState;
 import com.fongmi.android.tv.player.PlayerManager;
+import com.fongmi.android.tv.setting.CastSetting;
 import com.fongmi.android.tv.utils.Notify;
-import com.fongmi.android.tv.utils.Util;
+import com.fongmi.android.tv.MxBoxConstants;
+
+import com.github.catvod.utils.Util;
 
 import org.jupnp.UpnpServiceConfiguration;
 import org.jupnp.android.AndroidUpnpServiceImpl;
@@ -45,6 +55,10 @@ import java.util.UUID;
 
 public class DLNARendererService extends AndroidUpnpServiceImpl implements ServiceConnection {
 
+    private static final String TAG = "DLNARendererService";
+
+    private static volatile boolean registered;
+
     private final IBinder binder = new LocalBinder();
 
     private volatile PlayerManager player;
@@ -54,7 +68,14 @@ public class DLNARendererService extends AndroidUpnpServiceImpl implements Servi
     private DLNAAvTransportImpl avTransportImpl;
     private PlaybackService playbackService;
     private Player currentListenerPlayer;
+    private LocalDevice localDevice;
+    private WifiManager.MulticastLock multicastLock;
+    private ConnectivityManager.NetworkCallback networkCallback;
     private boolean bound;
+
+    public static boolean isRegistered() {
+        return registered;
+    }
 
     public static void start(Context context) {
         context.startService(new Intent(context, DLNARendererService.class));
@@ -62,6 +83,19 @@ public class DLNARendererService extends AndroidUpnpServiceImpl implements Servi
 
     public static void stop(Context context) {
         context.stopService(new Intent(context, DLNARendererService.class));
+    }
+
+    public String getDisplayDeviceName() {
+        return CastSetting.getDeviceName();
+    }
+
+    public String getLocalIp() {
+        return Util.getIp();
+    }
+
+    public void reregisterDevice() {
+        unregisterLocalDevice();
+        registerLocalDevice();
     }
 
     @Override
@@ -72,24 +106,95 @@ public class DLNARendererService extends AndroidUpnpServiceImpl implements Servi
     @Override
     public void onCreate() {
         super.onCreate();
-        Notification notification = new NotificationCompat.Builder(this, Notify.DEFAULT).setSmallIcon(R.drawable.ic_notification).setContentTitle(getString(R.string.app_name)).setSilent(true).build();
+        Notification notification = new NotificationCompat.Builder(this, Notify.DEFAULT)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(getString(R.string.app_name))
+                .setContentText(getString(R.string.setting_cast_running))
+                .setSilent(true)
+                .build();
         startForeground(Notify.ID + 1, notification);
+        acquireMulticastLock();
+        registerNetworkCallback();
         upnpService.startup();
         registerLocalDevice();
     }
 
+    private void acquireMulticastLock() {
+        try {
+            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wm == null) return;
+            multicastLock = wm.createMulticastLock("dlna");
+            multicastLock.setReferenceCounted(true);
+            multicastLock.acquire();
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to acquire multicast lock", e);
+        }
+    }
+
+    private void releaseMulticastLock() {
+        if (multicastLock == null) return;
+        try {
+            if (multicastLock.isHeld()) multicastLock.release();
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to release multicast lock", e);
+        }
+        multicastLock = null;
+    }
+
+    private void registerNetworkCallback() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) return;
+        networkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(@NonNull Network network) {
+                App.post(DLNARendererService.this::reregisterDevice);
+            }
+
+            @Override
+            public void onLost(@NonNull Network network) {
+                App.post(DLNARendererService.this::unregisterLocalDevice);
+            }
+        };
+        cm.registerDefaultNetworkCallback(networkCallback);
+    }
+
+    private void unregisterNetworkCallback() {
+        if (networkCallback == null) return;
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm != null) cm.unregisterNetworkCallback(networkCallback);
+        networkCallback = null;
+    }
+
     private void registerLocalDevice() {
+        if (localDevice != null) return;
         LocalService<DLNAAvTransportImpl> avTransport = createAvTransport();
         LocalService<ConnectionManagerService> connManager = createConnectionManager();
         LocalService<DLNARenderingControlImpl> renderControl = createRenderingControl();
         DeviceIdentity identity = new DeviceIdentity(new UDN(UUID.nameUUIDFromBytes((Build.MANUFACTURER + Build.MODEL + "-MediaRenderer").getBytes(StandardCharsets.UTF_8))));
         UDADeviceType type = new UDADeviceType("MediaRenderer", 1);
-        DeviceDetails details = new DeviceDetails(Util.getDeviceName(), new ManufacturerDetails(Build.MANUFACTURER), new ModelDetails(Build.MODEL, "DLNA Renderer", "1.0"));
+        DeviceDetails details = new DeviceDetails(CastSetting.getDeviceName(), new ManufacturerDetails(MxBoxConstants.APP_NAME), new ModelDetails(Build.MODEL, MxBoxConstants.APP_NAME, BuildConfig.VERSION_NAME));
         try {
-            LocalDevice device = new LocalDevice(identity, type, details, new LocalService[]{avTransport, connManager, renderControl});
-            upnpService.getRegistry().addDevice(device);
-        } catch (Exception ignored) {
+            localDevice = new LocalDevice(identity, type, details, new LocalService[]{avTransport, connManager, renderControl});
+            upnpService.getRegistry().addDevice(localDevice);
+            registered = true;
+            Log.i(TAG, "DLNA device registered: " + CastSetting.getDeviceName() + " @ " + Util.getIp());
+        } catch (Exception e) {
+            registered = false;
+            localDevice = null;
+            Log.w(TAG, "Failed to register DLNA device", e);
         }
+    }
+
+    private void unregisterLocalDevice() {
+        if (localDevice == null) return;
+        try {
+            upnpService.getRegistry().removeDevice(localDevice);
+            Log.i(TAG, "DLNA device unregistered");
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to unregister DLNA device", e);
+        }
+        localDevice = null;
+        registered = false;
     }
 
     @SuppressWarnings("unchecked")
@@ -132,7 +237,11 @@ public class DLNARendererService extends AndroidUpnpServiceImpl implements Servi
 
     @Override
     public void onDestroy() {
+        unregisterLocalDevice();
+        unregisterNetworkCallback();
+        releaseMulticastLock();
         unbindPlaybackService();
+        registered = false;
         super.onDestroy();
     }
 
@@ -222,7 +331,9 @@ public class DLNARendererService extends AndroidUpnpServiceImpl implements Servi
     private final Runnable positionUpdater = new Runnable() {
         @Override
         public void run() {
-            if (player != null && avTransportImpl != null && player.isPlaying()) avTransportImpl.updatePositionCache(player.getPosition(), getDuration());
+            if (player != null && avTransportImpl != null && player.isPlaying()) {
+                avTransportImpl.updatePositionCache(player.getPosition(), getDuration());
+            }
             if (player != null) App.post(this, 1000);
         }
     };

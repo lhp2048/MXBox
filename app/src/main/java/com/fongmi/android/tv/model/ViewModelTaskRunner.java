@@ -47,4 +47,12 @@ final class ViewModelTaskRunner<T extends Enum<T>> {
         futures.values().forEach(future -> future.cancel(true));
         futures.clear();
     }
+
+    void cancel(T type) {
+        AtomicInteger taskId = Objects.requireNonNull(taskIds.get(type));
+        taskId.incrementAndGet();
+        ListenableFuture<?> old = futures.get(type);
+        if (old != null) old.cancel(true);
+        futures.remove(type);
+    }
 }

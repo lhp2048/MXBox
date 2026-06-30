@@ -1,5 +1,7 @@
 package com.fongmi.android.tv.ui.fragment;
 
+import com.fongmi.android.tv.utils.Util;
+
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -116,7 +118,7 @@ public class CollectFragment extends BaseFragment implements MenuProvider, Colle
         for (Site site : mSites) width = Math.max(width, ResUtil.getTextWidth(site.getName(), 14));
         int contentWidth = width + space;
         int minWidth = ResUtil.dp2px(120);
-        int finalWidth = Math.clamp(contentWidth, minWidth, Math.max(minWidth, maxWidth));
+        int finalWidth = Util.clamp(contentWidth, minWidth, Math.max(minWidth, maxWidth));
         ViewGroup.LayoutParams params = mBinding.collect.getLayoutParams();
         params.width = finalWidth;
         mBinding.collect.setLayoutParams(params);

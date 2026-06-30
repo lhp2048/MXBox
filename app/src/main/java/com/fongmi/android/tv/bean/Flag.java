@@ -102,6 +102,11 @@ public class Flag implements Parcelable, Diffable<Flag> {
         return selected;
     }
 
+    public boolean hasDirectPlay() {
+        for (Episode episode : getEpisodes()) if (episode.isDirectPlay()) return true;
+        return false;
+    }
+
     public void setSelected(Flag item) {
         this.selected = item.equals(this);
         if (selected) item.episodes = episodes;

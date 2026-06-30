@@ -1,5 +1,7 @@
 package com.fongmi.android.tv.playback.vod;
 
+import com.fongmi.android.tv.utils.Util;
+
 import androidx.media3.common.C;
 
 import com.fongmi.android.tv.api.config.VodConfig;
@@ -56,6 +58,10 @@ public class VodPlaybackController {
         VodPlayRequest request = state.getPendingRequest();
         if (request == null) request = currentRequest();
         if (cannotApply(result, request)) return;
+        if (VodPlayErrorPolicy.shouldFallback(result)) {
+            fallbackPolicy.playbackError(result.getMsg());
+            return;
+        }
         applyPlayerResult(result, request);
     }
 
@@ -162,8 +168,7 @@ public class VodPlaybackController {
     }
 
     public void playbackError(String msg) {
-        host.resetPlaybackForError(msg);
-        fallbackPolicy.playbackError();
+        fallbackPolicy.playbackError(msg);
     }
 
     public void playbackEnded() {
@@ -290,6 +295,7 @@ public class VodPlaybackController {
         state.setFlags(item.getFlags());
         state.setHistory(historyPolicy.findOrCreate(host.getHistoryKey(), host.getVodMark(), item));
         lastHistory = state.getHistory();
+        preferDirectFlag(state.getHistory(), item.getFlags());
         host.renderDetail(item, state.getHistory());
         host.renderFlags(item.getFlags());
         host.renderHistory(state.getHistory());
@@ -339,6 +345,19 @@ public class VodPlaybackController {
         return null;
     }
 
+    private void preferDirectFlag(History history, List<Flag> flags) {
+        if (history == null || flags.isEmpty()) return;
+        Flag current = findFlag(history.getFlag());
+        if (current != null && current.hasDirectPlay()) return;
+        for (Flag flag : flags) {
+            if (!flag.hasDirectPlay()) continue;
+            history.setVodFlag(flag.getFlag());
+            if (!flag.getEpisodes().isEmpty()) history.setVodRemarks(flag.getEpisodes().get(0).getName());
+            history.setPosition(C.TIME_UNSET);
+            return;
+        }
+    }
+
     private boolean cannotApply(Result result, VodPlayRequest request) {
         return host.isHostFinishing() || !state.hasEpisode() || request == null || !request.matches(host.getVodKey(), state.getFlag(), state.getEpisode()) || !request.accepts(result);
     }
@@ -350,7 +369,7 @@ public class VodPlaybackController {
     private Episode getRelativeEpisode(int offset) {
         List<Episode> episodes = state.getFlag().getEpisodes();
         int current = state.getFlag().getPosition();
-        int position = Math.clamp(current + offset, 0, episodes.size() - 1);
+        int position = Util.clamp(current + offset, 0, episodes.size() - 1);
         return episodes.get(position);
     }
 }

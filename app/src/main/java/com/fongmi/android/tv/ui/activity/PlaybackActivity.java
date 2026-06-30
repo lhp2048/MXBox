@@ -31,6 +31,7 @@ import androidx.media3.ui.PlayerView;
 import androidx.media3.ui.TimeBar;
 import androidx.media3.ui.danmaku.DanmakuConfig;
 
+import com.fongmi.android.tv.Constant;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.player.PlayerManager;
@@ -41,6 +42,7 @@ import com.fongmi.android.tv.setting.DanmakuSetting;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.utils.ResUtil;
+import com.fongmi.android.tv.utils.UrlUtil;
 import com.github.catvod.net.OkHttp;
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -239,8 +241,13 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
             player().parse(key, result, useParse, metadata, startPositionMs);
         } else {
             attachSurface();
-            player().start(PlaySpec.from(result, key, metadata), timeout, startPositionMs);
+            player().start(PlaySpec.from(result, key, metadata), resolvePlayTimeout(result, timeout), startPositionMs);
         }
+    }
+
+    private long resolvePlayTimeout(Result result, long timeout) {
+        if (UrlUtil.isLocalServer(result.getRealUrl())) return Math.max(timeout, Constant.TIMEOUT_PLAY_PROXY);
+        return timeout;
     }
 
     private void bindPlaybackService() {

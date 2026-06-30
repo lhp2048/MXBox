@@ -1,0 +1,8 @@
+{
+  "urls": [
+    {
+      "name": "TEST",
+      "url": "assets://default_config.json"
+    }
+  ]
+}

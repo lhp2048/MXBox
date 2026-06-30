@@ -34,6 +34,8 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import com.github.catvod.utils.Util;
+
 public class DLNAAvTransportImpl extends AbstractAVTransportService {
 
     private final Context context;
@@ -101,10 +103,28 @@ public class DLNAAvTransportImpl extends AbstractAVTransportService {
         this.pendingSeekMs = -1;
         this.currentURI = currentURI != null ? currentURI : "";
         this.currentMetaData = currentURIMetaData != null ? currentURIMetaData : "";
-        startCastActivity(new CastAction(this.currentURI, this.currentMetaData, parseHeaders(this.currentMetaData)));
+        fireStateChange(RenderState.PREPARING);
+        startCastActivity(new CastAction(this.currentURI, this.currentMetaData, parseHeaders(this.currentMetaData, this.currentURI)));
     }
 
-    private Map<String, String> parseHeaders(String metaData) {
+    private Map<String, String> parseHeaders(String metaData, String uri) {
+        Map<String, String> headers = parseHeadersFromMeta(metaData);
+        if (!headers.containsKey("Referer") && uri != null && !uri.isEmpty()) {
+            try {
+                java.net.URI parsed = new java.net.URI(uri);
+                if (parsed.getHost() != null) {
+                    headers.put("Referer", parsed.getScheme() + "://" + parsed.getHost() + "/");
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        if (!headers.containsKey("User-Agent")) {
+            headers.put("User-Agent", Util.CHROME);
+        }
+        return headers;
+    }
+
+    private Map<String, String> parseHeadersFromMeta(String metaData) {
         try {
             DIDLContent content = new DIDLParser().parse(metaData);
             return content.getItems().stream().flatMap(item -> item.getProperties().stream()).filter(p -> p instanceof DIDLObject.Property.DC.DESCRIPTION).findFirst().map(p -> App.gson().<Map<String, String>>fromJson(p.getValue().toString(), TypeToken.getParameterized(Map.class, String.class, String.class).getType())).orElse(new HashMap<>());
@@ -167,7 +187,7 @@ public class DLNAAvTransportImpl extends AbstractAVTransportService {
             if (player == null || !dlnaActive) return;
             int state = player.getPlaybackState();
             if (!currentURI.isEmpty() && (state == Player.STATE_ENDED || state == Player.STATE_IDLE)) {
-                startCastActivity(new CastAction(currentURI, currentMetaData, parseHeaders(currentMetaData)));
+                startCastActivity(new CastAction(currentURI, currentMetaData, parseHeaders(currentMetaData, currentURI)));
             } else {
                 player.play();
             }
@@ -263,7 +283,7 @@ public class DLNAAvTransportImpl extends AbstractAVTransportService {
         currentMetaData = nextMetaData;
         nextURI = "";
         nextMetaData = "";
-        return new CastAction(currentURI, currentMetaData, parseHeaders(currentMetaData));
+        return new CastAction(currentURI, currentMetaData, parseHeaders(currentMetaData, currentURI));
     }
 
     public void fireStateChange(RenderState state) {

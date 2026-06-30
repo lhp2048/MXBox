@@ -1,5 +1,7 @@
 package com.fongmi.android.tv.ui.dialog;
 
+import com.fongmi.android.tv.utils.Util;
+
 import android.view.View;
 import android.widget.CompoundButton;
 import android.widget.TextView;
@@ -224,7 +226,7 @@ final class DanmakuSettingPanel {
     }
 
     private void setupSlider(Slider slider, TextView label, float initial, Function<Float, String> formatter, Consumer<Float> setter) {
-        float clamped = Math.clamp(initial, slider.getValueFrom(), slider.getValueTo());
+        float clamped = Util.clamp(initial, slider.getValueFrom(), slider.getValueTo());
         slider.clearOnChangeListeners();
         slider.setLabelFormatter(formatter::apply);
         slider.setValue(clamped);

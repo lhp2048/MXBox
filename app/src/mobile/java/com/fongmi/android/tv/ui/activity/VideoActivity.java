@@ -1388,7 +1388,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         int minHeight = ResUtil.dp2px(150);
         int maxHeight = ResUtil.getScreenHeight() / 2;
         int calculated = (int) (viewWidth * ((float) videoHeight / videoWidth));
-        int finalHeight = Math.clamp(calculated, minHeight, Math.max(minHeight, maxHeight));
+        int finalHeight = Util.clamp(calculated, minHeight, Math.max(minHeight, maxHeight));
         if (finalHeight == mBinding.video.getHeight()) return;
         if (mAnimator.isRunning()) mAnimator.cancel();
         mAnimator.setIntValues(mBinding.video.getHeight(), finalHeight);

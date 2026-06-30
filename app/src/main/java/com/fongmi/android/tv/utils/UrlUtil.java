@@ -70,4 +70,10 @@ public class UrlUtil {
         if (HttpHeaders.COOKIE.equalsIgnoreCase(key)) return HttpHeaders.COOKIE;
         return key;
     }
+
+    public static boolean isLocalServer(String url) {
+        if (url == null || url.isEmpty()) return false;
+        String host = host(url);
+        return "127.0.0.1".equals(host) || "localhost".equals(host);
+    }
 }

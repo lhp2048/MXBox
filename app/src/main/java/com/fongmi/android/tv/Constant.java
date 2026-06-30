@@ -11,6 +11,7 @@ public class Constant {
     public static final long TIMEOUT_EPG = TimeUnit.SECONDS.toMillis(5);
     public static final long TIMEOUT_XML = TimeUnit.SECONDS.toMillis(15);
     public static final long TIMEOUT_PLAY = TimeUnit.SECONDS.toMillis(15);
+    public static final long TIMEOUT_PLAY_PROXY = TimeUnit.SECONDS.toMillis(60);
     public static final long TIMEOUT_SYNC = TimeUnit.SECONDS.toMillis(2);
     public static final long TIMEOUT_SEARCH = TimeUnit.SECONDS.toMillis(30);
     public static final long TIMEOUT_PARSE_DEF = TimeUnit.SECONDS.toMillis(15);

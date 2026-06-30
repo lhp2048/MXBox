@@ -99,6 +99,10 @@ public class SiteViewModel extends ViewModel {
         searches.stop();
     }
 
+    public void cancelHome() {
+        tasks.cancel(TaskType.RESULT);
+    }
+
     @Override
     protected void onCleared() {
         stopSearch();

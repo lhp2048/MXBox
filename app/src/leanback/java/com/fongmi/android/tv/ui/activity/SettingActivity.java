@@ -7,7 +7,9 @@ import android.view.View;
 
 import androidx.viewbinding.ViewBinding;
 
+import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.BuildConfig;
+import com.fongmi.android.tv.MxBoxBootstrap;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.Updater;
 import com.fongmi.android.tv.api.config.LiveConfig;
@@ -16,6 +18,7 @@ import com.fongmi.android.tv.api.config.WallConfig;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Live;
 import com.fongmi.android.tv.bean.Site;
+import com.fongmi.android.tv.cast.CastReceiver;
 import com.fongmi.android.tv.databinding.ActivitySettingBinding;
 import com.fongmi.android.tv.db.AppDatabase;
 import com.fongmi.android.tv.event.ConfigEvent;
@@ -24,9 +27,12 @@ import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.impl.ConfigListener;
 import com.fongmi.android.tv.impl.LiveListener;
 import com.fongmi.android.tv.impl.SiteListener;
+import com.fongmi.android.tv.service.DLNARendererService;
+import com.fongmi.android.tv.setting.CastSetting;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.base.BaseActivity;
+import com.fongmi.android.tv.ui.dialog.CastDeviceDialog;
 import com.fongmi.android.tv.ui.dialog.ConfigDialog;
 import com.fongmi.android.tv.ui.dialog.DohDialog;
 import com.fongmi.android.tv.ui.dialog.HistoryDialog;
@@ -39,6 +45,7 @@ import com.fongmi.android.tv.utils.PermissionUtil;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.github.catvod.bean.Doh;
 import com.github.catvod.net.OkHttp;
+import com.github.catvod.utils.Util;
 
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
@@ -46,7 +53,7 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SettingActivity extends BaseActivity implements ConfigListener, SiteListener, LiveListener, DohDialog.Listener {
+public class SettingActivity extends BaseActivity implements ConfigListener, SiteListener, LiveListener, DohDialog.Listener, CastDeviceDialog.Listener {
 
     private ActivitySettingBinding mBinding;
     private String[] size;
@@ -79,6 +86,22 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.versionText.setText(BuildConfig.VERSION_NAME);
         setCacheText();
         setOtherText();
+        setCastText();
+    }
+
+    private void setCastText() {
+        mBinding.castEnabledText.setText(Setting.getSwitch(CastSetting.isEnabled()));
+        mBinding.castDeviceNameText.setText(CastSetting.getDeviceName());
+        updateCastStatusText();
+    }
+
+    private void updateCastStatusText() {
+        if (!CastSetting.isEnabled()) {
+            mBinding.castStatusText.setText(getString(R.string.setting_cast_stopped));
+            return;
+        }
+        String status = DLNARendererService.isRegistered() ? getString(R.string.setting_cast_running) : getString(R.string.setting_cast_stopped);
+        mBinding.castStatusText.setText(getString(R.string.setting_cast_status_info, status, Util.getIp()));
     }
 
     private void setOtherText() {
@@ -107,6 +130,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.backup.setOnClickListener(this::onBackup);
         mBinding.player.setOnClickListener(this::onPlayer);
         mBinding.danmaku.setOnClickListener(this::onDanmaku);
+        mBinding.castEnabled.setOnClickListener(this::setCastEnabled);
+        mBinding.castDeviceName.setOnClickListener(this::onCastDeviceName);
+        mBinding.castStatus.setOnClickListener(this::onCastStatus);
         mBinding.restore.setOnClickListener(this::onRestore);
         mBinding.version.setOnClickListener(this::onVersion);
         mBinding.vod.setOnLongClickListener(this::onVodEdit);
@@ -124,6 +150,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
 
     @Override
     public void setConfig(Config config) {
+        MxBoxBootstrap.onUserConfigChanged(config);
         if (config.getUrl().startsWith("file")) {
             PermissionUtil.requestFile(this, allGranted -> load(config));
         } else {
@@ -230,6 +257,37 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
 
     private void onVersion(View view) {
         Updater.create().force().start(this);
+    }
+
+    private void setCastEnabled(View view) {
+        boolean enabled = !CastSetting.isEnabled();
+        CastSetting.putEnabled(enabled);
+        mBinding.castEnabledText.setText(Setting.getSwitch(enabled));
+        if (enabled) CastReceiver.startIfEnabled(this);
+        else CastReceiver.stop(this);
+        updateCastStatusText();
+    }
+
+    private void onCastDeviceName(View view) {
+        CastDeviceDialog.show(this);
+    }
+
+    private void onCastStatus(View view) {
+        updateCastStatusText();
+    }
+
+    @Override
+    public void onCastDeviceName(String name) {
+        CastSetting.putDeviceName(name);
+        mBinding.castDeviceNameText.setText(CastSetting.getDeviceName());
+        if (CastSetting.isEnabled()) CastReceiver.restart(this);
+        App.post(this::updateCastStatusText, 500);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateCastStatusText();
     }
 
     private void setWallDefault(View view) {

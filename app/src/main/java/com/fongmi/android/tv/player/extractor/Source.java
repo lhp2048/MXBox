@@ -54,7 +54,8 @@ public class Source {
     }
 
     public void parse(Vod vod) throws Exception {
-        try (ExecutorService executor = Executors.newCachedThreadPool()) {
+        ExecutorService executor = Executors.newCachedThreadPool();
+        try {
             for (Flag flag : vod.getFlags()) {
                 List<Callable<List<Episode>>> items = new ArrayList<>();
                 Iterator<Episode> iterator = flag.getEpisodes().iterator();
@@ -66,6 +67,8 @@ public class Source {
                     }
                 }
             }
+        } finally {
+            executor.shutdownNow();
         }
     }
 

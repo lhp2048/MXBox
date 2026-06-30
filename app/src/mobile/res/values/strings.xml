@@ -29,7 +29,7 @@
     <!-- Device -->
     <string name="device_select">Select devices</string>
     <string name="device_offline">Device is offline</string>
-    <string name="device_scan">Please scan QR Code to bind</string>
+    <string name="device_scan">Please scan MXBox QR Code to bind</string>
 
     <!-- Control -->
     <string name="control_speed">Speed</string>

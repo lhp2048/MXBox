@@ -1,5 +1,7 @@
 package com.fongmi.android.tv.ui.dialog;
 
+import com.fongmi.android.tv.utils.Util;
+
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -68,10 +70,10 @@ final class OffsetPanel {
 
     private float snapToStep(Slider slider, float value) {
         float step = slider.getStepSize();
-        float clamped = Math.clamp(value, slider.getValueFrom(), slider.getValueTo());
+        float clamped = Util.clamp(value, slider.getValueFrom(), slider.getValueTo());
         if (step <= 0) return clamped;
         float snapped = slider.getValueFrom() + Math.round((clamped - slider.getValueFrom()) / step) * step;
-        return Math.clamp(snapped, slider.getValueFrom(), slider.getValueTo());
+        return Util.clamp(snapped, slider.getValueFrom(), slider.getValueTo());
     }
 
     private String format(float value) {

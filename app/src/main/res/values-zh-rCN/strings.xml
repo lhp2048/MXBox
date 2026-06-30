@@ -1,7 +1,48 @@
 <resources xmlns:xliff="http://schemas.android.com/apk/res-auto">
 
     <!-- App -->
-    <string name="app_name">影视</string>
+    <string name="app_name">MXBox</string>
+    <string name="mx_source_title">切换配置源</string>
+    <string name="mx_source_live_switched">直播源已切换：%1$s</string>
+    <string name="mx_source_test">测速诊断</string>
+    <string name="mx_source_testing_prepare">正在测速…</string>
+    <string name="mx_source_testing">正在测速 %1$d/%2$d…</string>
+    <string name="mx_source_testing_parallel">并行测速 %1$d/%2$d（最多 %3$d 路）</string>
+    <string name="mx_source_test_done">测速完成，延迟已更新</string>
+    <string name="mx_source_test_none">尚未测速</string>
+    <string name="mx_source_test_last">上次测速：%1$s</string>
+    <string name="mx_source_current_none">未配置</string>
+    <string name="mx_source_current_item">%1$s（%2$s）</string>
+    <string name="mx_source_current_prefix">当前：%1$s</string>
+    <string name="mx_source_badge_current">当前</string>
+    <string name="mx_source_probe_pending">待测</string>
+    <string name="mx_source_probe_testing">测速中</string>
+    <string name="mx_source_probe_fail">失败 %1$dms</string>
+    <string name="mx_source_testing_item">正在测速：%1$s（%2$d/%3$d）</string>
+    <string name="mx_source_add_vod">添加点播</string>
+    <string name="mx_source_add_live">添加直播</string>
+    <string name="mx_source_manage">管理源</string>
+    <string name="mx_source_manage_title">管理配置源</string>
+    <string name="mx_source_manage_vod">点播历史</string>
+    <string name="mx_source_manage_live">直播历史</string>
+    <string name="mx_load_start">正在切换：%1$s</string>
+    <string name="mx_load_fetch_config">正在获取配置…</string>
+    <string name="mx_load_cache_hit">使用本地缓存配置</string>
+    <string name="mx_load_parse_jar">正在加载爬虫…</string>
+    <string name="mx_load_depot_merge">正在合并源 %1$d/%2$d…</string>
+    <string name="mx_load_sync_live">正在同步直播源…</string>
+    <string name="mx_load_home_content">正在加载首页节目…</string>
+    <string name="mx_load_spider_invalid">爬虫 JAR 无效或不可用，请检查源配置</string>
+    <string name="mx_load_error">加载失败：%1$s</string>
+    <string name="mx_setting_subscription">订阅</string>
+    <string name="mx_setting_sites">站点</string>
+    <string name="mx_setting_sites_current">%1$s · 共 %2$d 个</string>
+    <string name="mx_setting_sites_count">共 %1$d 个站点</string>
+    <string name="mx_depot_loading">正在加载 %1$d/%2$d：%3$s（已发现 %4$d 个站点）</string>
+    <string name="mx_setting_sites_loading">正在加载站点 %1$d/%2$d · 已发现 %3$d 个</string>
+    <string name="mx_home_title">%1$s · %2$s</string>
+    <string name="mx_setting_vod_url">点播地址</string>
+    <string name="mx_setting_vod_url_empty">未设置，长按编辑</string>
 
     <!-- Live -->
     <string name="live_pass">密码</string>
@@ -138,6 +179,14 @@
     <string name="setting_choose">选择</string>
     <string name="setting_off">关</string>
     <string name="setting_on">开</string>
+    <string name="setting_cast">投屏接收</string>
+    <string name="setting_cast_device_name">投屏设备名</string>
+    <string name="setting_cast_status">投屏状态</string>
+    <string name="setting_cast_running">投屏接收已开启</string>
+    <string name="setting_cast_stopped">已停止</string>
+    <string name="setting_cast_hint">请确保手机与电视连接同一 Wi-Fi。在 B 站等 App 播放页点击投屏/TV，选择下方设备名。若搜不到设备，请关闭路由器 AP 隔离或使用同一网段。</string>
+    <string name="setting_cast_status_info">%1$s · %2$s</string>
+    <string name="cast_device_name_hint">手机端显示的设备名称</string>
 
     <!-- Backup & Restore -->
     <string name="restore_select">选择备份</string>

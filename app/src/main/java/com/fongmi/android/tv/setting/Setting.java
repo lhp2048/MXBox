@@ -10,6 +10,8 @@ public class Setting {
     private static final int MAX_WALL = 4;
     private static final int MIN_WALL_TYPE = 0;
     private static final int MAX_WALL_TYPE = 2;
+    private static final int MIN_RESET = 0;
+    private static final int MAX_RESET = 1;
     private static final int MIN_SITE_MODE = 0;
     private static final int MAX_SITE_MODE = 1;
     private static final int MIN_SYNC_MODE = 0;
@@ -87,6 +89,14 @@ public class Setting {
         int color = getThemeColor();
         if (color == -1) return 0;
         return color != 0 ? color : getWallColor();
+    }
+
+    public static int getReset() {
+        return Math.clamp(Prefers.getInt("reset", 0), MIN_RESET, MAX_RESET);
+    }
+
+    public static void putReset(int reset) {
+        Prefers.put("reset", Math.clamp(reset, MIN_RESET, MAX_RESET));
     }
 
     public static int getSiteMode() {

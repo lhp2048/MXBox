@@ -1,5 +1,7 @@
 package com.fongmi.android.tv.ui.dialog;
 
+import com.fongmi.android.tv.utils.Util;
+
 import android.view.View;
 
 import androidx.fragment.app.FragmentActivity;
@@ -10,11 +12,17 @@ import androidx.viewbinding.ViewBinding;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.databinding.DialogSiteBinding;
+import com.fongmi.android.tv.event.DepotLoadEvent;
 import com.fongmi.android.tv.impl.SiteListener;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.adapter.SiteAdapter;
 import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
+import com.fongmi.android.tv.ui.helper.SiteDialogDepotHelper;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickListener {
 
@@ -51,7 +59,7 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
     }
 
     private int getCount() {
-        return list() ? 1 : Math.clamp((int) Math.ceil((double) adapter.getItemCount() / GRID_COUNT), 2, 3);
+        return list() ? 1 : Util.clamp((int) Math.ceil((double) adapter.getItemCount() / GRID_COUNT), 2, 3);
     }
 
     private int getIcon() {
@@ -79,6 +87,7 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
         setType(type);
         setRecyclerView();
         setMode();
+        updateDepotProgress();
     }
 
     @Override
@@ -88,6 +97,16 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
         binding.cancel.setOnClickListener(v -> adapter.cancelAll());
         binding.search.setOnClickListener(v -> setType(v.isSelected() ? 0 : 1));
         binding.change.setOnClickListener(v -> setType(v.isSelected() ? 0 : 2));
+    }
+
+    private void updateDepotProgress() {
+        SiteDialogDepotHelper.bind(binding.progressPanel, binding.progressBar, binding.progressText, requireContext());
+    }
+
+    private void refreshSites() {
+        adapter.refresh();
+        setMode();
+        updateDepotProgress();
     }
 
     private void setRecyclerView() {
@@ -134,7 +153,21 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
     @Override
     public void onStart() {
         super.onStart();
-        if (adapter.getItemCount() == 0) dismiss();
+        EventBus.getDefault().register(this);
+        if (adapter.getItemCount() == 0 && !DepotLoadEvent.isLoading()) dismiss();
         else setWidth();
+    }
+
+    @Override
+    public void onStop() {
+        EventBus.getDefault().unregister(this);
+        super.onStop();
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onDepotLoadEvent(DepotLoadEvent event) {
+        if (binding == null || adapter == null) return;
+        refreshSites();
+        if (event.phase == DepotLoadEvent.Phase.DONE && adapter.getItemCount() == 0) dismiss();
     }
 }

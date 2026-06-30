@@ -3,7 +3,7 @@ package com.fongmi.android.tv.api.config;
 import android.text.TextUtils;
 
 import com.fongmi.android.tv.App;
-import com.fongmi.android.tv.api.Decoder;
+import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.loader.BaseLoader;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Depot;
@@ -11,17 +11,23 @@ import com.fongmi.android.tv.bean.Parse;
 import com.fongmi.android.tv.bean.Rule;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.event.ConfigEvent;
+import com.fongmi.android.tv.event.ConfigLoadEvent;
+import com.fongmi.android.tv.event.DepotLoadEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.impl.Callback;
+import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.UrlUtil;
 import com.github.catvod.bean.Doh;
 import com.github.catvod.bean.Header;
 import com.github.catvod.bean.Proxy;
 import com.github.catvod.utils.Json;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -66,7 +72,9 @@ public class VodConfig extends BaseConfig {
     }
 
     public static void load(Config config, Callback callback) {
-        get().clear().config(config).load(callback);
+        VodConfig vod = get();
+        vod.config(config);
+        vod.load(callback, false, () -> vod.clear(false));
     }
 
     public VodConfig init() {
@@ -79,6 +87,10 @@ public class VodConfig extends BaseConfig {
     }
 
     public VodConfig clear() {
+        return clear(true);
+    }
+
+    public VodConfig clear(boolean full) {
         ads = null;
         doh = null;
         home = null;
@@ -88,7 +100,8 @@ public class VodConfig extends BaseConfig {
         flags = null;
         rules = null;
         parses = null;
-        BaseLoader.get().clear();
+        if (full) BaseLoader.get().clear();
+        else BaseLoader.get().onConfigSwitch();
         RuleConfig.get().invalidate();
         return this;
     }
@@ -111,7 +124,7 @@ public class VodConfig extends BaseConfig {
 
     @Override
     protected void load(Config config) throws Throwable {
-        String json = Decoder.getJson(UrlUtil.convert(config.getUrl()), TAG);
+        String json = fetchConfigJson(config);
         checkJson(config, Json.parse(json).getAsJsonObject());
     }
 
@@ -123,6 +136,8 @@ public class VodConfig extends BaseConfig {
     private void checkJson(Config config, JsonObject object) throws Throwable {
         if (object.has("msg")) {
             throw new Exception(object.get("msg").getAsString());
+        } else if (object.has("storeHouse")) {
+            parseStoreHouse(config, object);
         } else if (object.has("urls")) {
             parseDepot(config, object);
         } else {
@@ -130,24 +145,166 @@ public class VodConfig extends BaseConfig {
         }
     }
 
+    private void parseStoreHouse(Config config, JsonObject object) throws Throwable {
+        JsonArray storeHouse = object.getAsJsonArray("storeHouse");
+        JsonArray urls = new JsonArray();
+        for (JsonElement element : storeHouse) {
+            if (!element.isJsonObject()) continue;
+            JsonObject item = element.getAsJsonObject();
+            JsonObject url = new JsonObject();
+            url.addProperty("name", Json.safeString(item, "sourceName"));
+            url.addProperty("url", Json.safeString(item, "sourceUrl"));
+            urls.add(url);
+        }
+        JsonObject wrapper = new JsonObject();
+        wrapper.add("urls", urls);
+        parseDepot(config, wrapper);
+    }
+
     private void parseDepot(Config config, JsonObject object) throws Throwable {
-        List<Depot> items = Depot.arrayFrom(object.getAsJsonArray("urls").toString());
+        List<Depot> items = Depot.arrayFrom(object.getAsJsonArray("urls"));
         List<Config> configs = new ArrayList<>();
         for (Depot item : items) configs.add(Config.find(item, VOD));
         if (configs.isEmpty()) throw new Exception("Depot urls is empty");
-        load(this.config = configs.get(0));
-        Config.delete(config.getUrl());
+        if (configs.size() == 1) {
+            load(this.config = configs.get(0));
+            Config.delete(config.getUrl());
+            return;
+        }
+        parseDepotMerge(config, configs);
     }
 
-    private void parseConfig(Config config, JsonObject object) {
-        initList(object);
-        initLive(config, object);
-        initWall(config, object);
-        initSite(config, object);
-        initParse(config, object);
+    private void parseDepotMerge(Config feedConfig, List<Config> configs) throws Throwable {
+        int total = configs.size();
+        DepotLoadEvent.start(total);
+        LinkedHashMap<String, Site> merged = new LinkedHashMap<>();
+        JsonObject primaryObject = null;
+        Config primary = configs.get(0);
+        try {
+            for (int i = 0; i < configs.size(); i++) {
+                if (Thread.currentThread().isInterrupted()) throw new InterruptedException("Canceled");
+                Config depotConfig = configs.get(i);
+                String json = fetchConfigJson(depotConfig);
+                JsonObject obj = Json.parse(json).getAsJsonObject();
+                if (obj.has("msg") || obj.has("urls") || obj.has("storeHouse")) {
+                    DepotLoadEvent.progress(i + 1, total, depotConfig.getDesc(), merged.size());
+                ConfigLoadEvent.depotMerge(ConfigLoadEvent.TYPE_VOD, i + 1, total, depotConfig.getDesc(), merged.size());
+                    continue;
+                }
+                boolean isPrimary = primaryObject == null;
+                if (isPrimary) {
+                    primaryObject = obj;
+                    primary = depotConfig;
+                }
+                String spider = Json.safeString(obj, "spider");
+                parseSpiderSafe(spider, isPrimary);
+                for (JsonElement element : Json.safeListElement(obj, "sites")) {
+                    Site site = Site.objectFrom(element, spider);
+                    if (!site.isEmpty()) merged.putIfAbsent(site.getKey(), site);
+                }
+                applyPartialSites(new ArrayList<>(merged.values()));
+                DepotLoadEvent.progress(i + 1, total, depotConfig.getDesc(), merged.size());
+                ConfigLoadEvent.depotMerge(ConfigLoadEvent.TYPE_VOD, i + 1, total, depotConfig.getDesc(), merged.size());
+            }
+            if (primaryObject == null || merged.isEmpty()) throw new Exception("No valid depot config");
+            this.config = primary;
+            parseConfigMerged(primary, primaryObject, new ArrayList<>(merged.values()));
+            primary.update();
+            Config.delete(feedConfig.getUrl());
+            DepotLoadEvent.done(merged.size());
+        } catch (Throwable e) {
+            DepotLoadEvent.error();
+            throw e;
+        }
+    }
+
+    private void parseConfigMerged(Config config, JsonObject object, List<Site> mergedSites) {
+        initSiteMerged(config, object, mergedSites);
+        initListSafe(object);
+        initWallSafe(config, object);
+        initParseSafe(config, object);
+        initLiveSafe(config, object);
         config.setLogo(Json.safeString(object, "logo"));
         config.setNotice(Json.safeString(object, "notice"));
         config.setDanmaku(Json.safeString(object, "danmaku"));
+    }
+
+    private void applyPartialSites(List<Site> sites) {
+        setSites(new ArrayList<>(sites));
+        Map<String, Site> items = Site.findAll().stream().collect(Collectors.toMap(Site::getKey, Function.identity()));
+        getSites().forEach(site -> site.sync(items.get(site.getKey())));
+    }
+
+    private void initSiteMerged(Config config, JsonObject object, List<Site> mergedSites) {
+        String spider = Json.safeString(object, "spider");
+        LinkedHashMap<String, Site> deduped = new LinkedHashMap<>();
+        for (Site site : mergedSites) {
+            if (site.isEmpty()) continue;
+            deduped.putIfAbsent(site.getKey(), site);
+        }
+        setSites(new ArrayList<>(deduped.values()));
+        Map<String, Site> items = Site.findAll().stream().collect(Collectors.toMap(Site::getKey, Function.identity()));
+        getSites().forEach(site -> site.sync(items.get(site.getKey())));
+        setHome(config, pickDefaultHome(config, new ArrayList<>(deduped.values())), false);
+        parseSpiderSafe(spider, true);
+    }
+
+    private void parseConfig(Config config, JsonObject object) throws Exception {
+        initSite(config, object);
+        initListSafe(object);
+        initWallSafe(config, object);
+        initParseSafe(config, object);
+        initLiveSafe(config, object);
+        config.setLogo(Json.safeString(object, "logo"));
+        config.setNotice(Json.safeString(object, "notice"));
+        config.setDanmaku(Json.safeString(object, "danmaku"));
+    }
+
+    private void initListSafe(JsonObject object) {
+        try {
+            initList(object);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void initWallSafe(Config config, JsonObject object) {
+        try {
+            initWall(config, object);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void initParseSafe(Config config, JsonObject object) {
+        try {
+            initParse(config, object);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void parseSpiderSafe(String spider, boolean recent) {
+        if (TextUtils.isEmpty(spider)) return;
+        ConfigLoadEvent.parseJar(ConfigLoadEvent.TYPE_VOD);
+        try {
+            if (!BaseLoader.get().parseJar(spider, recent)) {
+                App.post(() -> Notify.show(R.string.mx_load_spider_invalid));
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
+            App.post(() -> Notify.show(R.string.mx_load_spider_invalid));
+        }
+    }
+
+    private List<Site> parseSites(JsonObject object, String spider) {
+        LinkedHashMap<String, Site> items = new LinkedHashMap<>();
+        for (JsonElement element : Json.safeListElement(object, "sites")) {
+            Site site = Site.objectFrom(element, spider);
+            if (site.isEmpty()) continue;
+            items.putIfAbsent(site.getKey(), site);
+        }
+        return new ArrayList<>(items.values());
     }
 
     private void initList(JsonObject object) {
@@ -161,10 +318,29 @@ public class VodConfig extends BaseConfig {
     }
 
     private void initLive(Config config, JsonObject object) {
-        if (Json.isEmpty(object, "lives")) return;
+        if (Json.isEmpty(object, "lives") && !MxBoxFeedStore.hasLives()) return;
+        ConfigLoadEvent.syncLive(ConfigLoadEvent.TYPE_VOD);
         Config temp = Config.find(config, LIVE).save();
         boolean sync = LiveConfig.get().needSync(config.getUrl());
         if (sync) LiveConfig.get().config(temp.update()).parse(object);
+    }
+
+    public void reloadLiveMerge() throws Throwable {
+        Config config = getConfig();
+        if (config.isEmpty()) return;
+        ConfigLoadEvent.syncLive(ConfigLoadEvent.TYPE_VOD);
+        String json = fetchConfigJson(config);
+        if (!Json.isObj(json)) return;
+        Config temp = Config.find(config, LIVE).save();
+        LiveConfig.get().config(temp.update()).parse(Json.parse(json).getAsJsonObject());
+    }
+
+    private void initLiveSafe(Config config, JsonObject object) {
+        try {
+            initLive(config, object);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
     }
 
     private void initWall(Config config, JsonObject object) {
@@ -175,13 +351,28 @@ public class VodConfig extends BaseConfig {
         if (sync) WallConfig.get().config(temp.update());
     }
 
-    private void initSite(Config config, JsonObject object) {
+    private void initSite(Config config, JsonObject object) throws Exception {
         String spider = Json.safeString(object, "spider");
-        BaseLoader.get().parseJar(spider, true);
-        setSites(Json.safeListElement(object, "sites").stream().map(e -> Site.objectFrom(e, spider)).distinct().collect(Collectors.toCollection(ArrayList::new)));
+        setSites(parseSites(object, spider));
+        if (getSites().isEmpty()) throw new Exception("sites is empty");
         Map<String, Site> items = Site.findAll().stream().collect(Collectors.toMap(Site::getKey, Function.identity()));
         getSites().forEach(site -> site.sync(items.get(site.getKey())));
-        setHome(config, getSites().isEmpty() ? new Site() : getSites().stream().filter(item -> item.getKey().equals(config.getHome())).findFirst().orElse(getSites().get(0)), false);
+        setHome(config, pickDefaultHome(config, getSites()), false);
+        parseSpiderSafe(spider, true);
+    }
+
+    private Site pickDefaultHome(Config config, List<Site> sites) {
+        if (sites.isEmpty()) return new Site();
+        String key = config.getHome();
+        if (!TextUtils.isEmpty(key)) {
+            for (Site site : sites) {
+                if (site.getKey().equals(key) && site.isSearchable()) return site;
+            }
+        }
+        for (Site site : sites) {
+            if (site.isSearchable()) return site;
+        }
+        return sites.get(0);
     }
 
     private void initParse(Config config, JsonObject object) {

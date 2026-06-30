@@ -24,7 +24,7 @@ import androidx.viewbinding.ViewBinding;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Product;
 import com.fongmi.android.tv.R;
-import com.fongmi.android.tv.Updater;
+import com.fongmi.android.tv.api.config.HomeResultCache;
 import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.api.config.WallConfig;
@@ -40,13 +40,15 @@ import com.fongmi.android.tv.databinding.ActivityHomeBinding;
 import com.fongmi.android.tv.db.AppDatabase;
 import com.fongmi.android.tv.event.CastEvent;
 import com.fongmi.android.tv.event.ConfigEvent;
+import com.fongmi.android.tv.event.ConfigLoadEvent;
+import com.fongmi.android.tv.event.DepotLoadEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.event.ServerEvent;
 import com.fongmi.android.tv.impl.Callback;
+import com.fongmi.android.tv.impl.ConfigListener;
 import com.fongmi.android.tv.model.SiteViewModel;
 import com.fongmi.android.tv.player.extractor.Source;
 import com.fongmi.android.tv.server.Server;
-import com.fongmi.android.tv.service.DLNARendererService;
 import com.fongmi.android.tv.service.PlaybackService;
 import com.fongmi.android.tv.ui.adapter.BaseDiffCallback;
 import com.fongmi.android.tv.ui.base.BaseActivity;
@@ -69,6 +71,9 @@ import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.UrlUtil;
 import com.github.catvod.net.OkHttp;
 import com.google.common.collect.Lists;
+import com.fongmi.android.tv.MxBoxBootstrap;
+import com.fongmi.android.tv.ui.helper.MxBoxHomeTitle;
+import com.fongmi.android.tv.ui.dialog.MxBoxSourceDialog;
 
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
@@ -76,9 +81,7 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
-
-public class HomeActivity extends BaseActivity implements CustomTitleView.Listener, VodPresenter.OnClickListener, FuncPresenter.OnClickListener, HistoryPresenter.OnClickListener {
+public class HomeActivity extends BaseActivity implements CustomTitleView.Listener, VodPresenter.OnClickListener, FuncPresenter.OnClickListener, HistoryPresenter.OnClickListener, ConfigListener {
 
     private ActivityHomeBinding mBinding;
     private ArrayObjectAdapter mHistoryAdapter;
@@ -118,21 +121,22 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     protected void initView(Bundle savedInstanceState) {
         mResult = Result.empty();
         mClock = Clock.create(mBinding.clock);
-        mBinding.progressLayout.showProgress();
+        showProgress();
         PermissionUtil.requestNotify(this);
-        DLNARendererService.start(this);
-        Updater.create().start(this);
         setRecyclerView();
         setViewModel();
         setAdapter();
         initConfig();
         setTitle();
         setLogo();
+        setFunc();
     }
 
     @Override
     protected void initEvent() {
         mBinding.title.setListener(this);
+        mBinding.logo.setFocusable(true);
+        mBinding.logo.setOnClickListener(v -> MxBoxSourceDialog.create().show(this));
         mBinding.recycler.addOnChildViewHolderSelectedListener(new OnChildViewHolderSelectedListener() {
             @Override
             public void onChildViewHolderSelected(@NonNull RecyclerView parent, @Nullable RecyclerView.ViewHolder child, int position, int subposition) {
@@ -180,6 +184,10 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             mAdapter.remove("progress");
             addVideo(mResult = result);
             Cache.clear().put(result);
+            HomeResultCache.put(VodConfig.getCid(), getHome().getKey(), result);
+            ConfigLoadEvent.done();
+            mBinding.progressLayout.resetLoadProgress();
+            showContent();
         });
     }
 
@@ -191,9 +199,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     private void setTitle() {
-        List<String> items = Arrays.asList(getHome().getName(), getConfig().getName(), getString(R.string.app_name));
-        Optional<String> optional = items.stream().filter(s -> !TextUtils.isEmpty(s)).findFirst();
-        optional.ifPresent(s -> mBinding.title.setText(s));
+        mBinding.title.setText(MxBoxHomeTitle.text(this));
     }
 
     private void initConfig() {
@@ -219,8 +225,24 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     private void showContent() {
         mBinding.progressLayout.showContent();
+        ConfigLoadEvent.done();
+        mBinding.progressLayout.resetLoadProgress();
+        setFunc();
         checkAction(getIntent());
         setFocus();
+    }
+
+    private void showProgress() {
+        mBinding.progressLayout.showProgress();
+        mBinding.progressLayout.updateLoadProgress(ConfigLoadEvent.current());
+    }
+
+    private void onCancelHomeLoad() {
+        VodConfig.get().cancelLoad();
+        LiveConfig.get().cancelLoad();
+        mViewModel.cancelHome();
+        showContent();
+        MxBoxSourceDialog.create().show(this);
     }
 
     private void loadLive(String url) {
@@ -239,12 +261,22 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     private void getVideo() {
-        mResult = Result.empty();
         int index = getRecommendIndex();
         boolean gone = mAdapter.indexOf("progress") == -1;
         boolean hasItem = gone && mAdapter.size() > index;
-        if (hasItem) mAdapter.removeItems(index, mAdapter.size() - index);
-        if (gone) mAdapter.add("progress");
+        Result cached = HomeResultCache.get(VodConfig.getCid(), getHome().getKey());
+        if (cached != null) {
+            mResult = cached;
+            if (hasItem) mAdapter.removeItems(index, mAdapter.size() - index);
+            addVideo(cached);
+            mBinding.progressLayout.showContent();
+        } else {
+            mResult = Result.empty();
+            if (hasItem) mAdapter.removeItems(index, mAdapter.size() - index);
+            if (gone) mAdapter.add("progress");
+            showProgress();
+        }
+        ConfigLoadEvent.homeContent();
         mViewModel.homeContent();
     }
 
@@ -316,14 +348,30 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onConfigLoadEvent(ConfigLoadEvent event) {
+        if (mBinding.progressLayout.isProgress()) {
+            mBinding.progressLayout.updateLoadProgress(event);
+        }
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onDepotLoadEvent(DepotLoadEvent event) {
+        if (mBinding.progressLayout.isProgress()) {
+            mBinding.progressLayout.bindDepotProgress();
+        }
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
     public void onConfigEvent(ConfigEvent event) {
         switch (event.type()) {
             case VOD:
                 RefreshEvent.history();
                 RefreshEvent.home();
                 setLogo();
+                setTitle();
                 break;
             case COMMON:
+            case LIVE:
                 setFunc();
                 break;
             case BOOT:
@@ -444,6 +492,43 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     @Override
+    public void setConfig(Config config) {
+        showProgress();
+        if (config.getType() == 1) {
+            LiveConfig.load(config, new Callback() {
+                @Override
+                public void success() {
+                    showContent();
+                    setFunc();
+                    Notify.show(getString(R.string.mx_source_live_switched, config.getDesc()));
+                }
+
+                @Override
+                public void error(String msg) {
+                    ConfigLoadEvent.error(msg);
+                    Notify.show(msg);
+                    showContent();
+                }
+            });
+            return;
+        }
+        MxBoxBootstrap.onUserConfigChanged(config);
+        VodConfig.load(config, new Callback() {
+            @Override
+            public void success() {
+                showContent();
+            }
+
+            @Override
+            public void error(String msg) {
+                ConfigLoadEvent.error(msg);
+                Notify.show(msg);
+                showContent();
+            }
+        });
+    }
+
+    @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (KeyUtil.isMenuKey(event)) showDialog();
         if (KeyUtil.isActionDown(event) & KeyUtil.isDownKey(event) && getCurrentFocus() == mBinding.title) return mBinding.recycler.getChildAt(0).requestFocus();
@@ -465,7 +550,8 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     @Override
     protected void onBackInvoked() {
         if (mBinding.progressLayout.isProgress()) {
-            showContent();
+            onCancelHomeLoad();
+            return;
         } else if (mPresenter.isDelete()) {
             setHistoryDelete(false);
         } else if (mBinding.recycler.getSelectedPosition() != 0) {
@@ -478,7 +564,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     @Override
     protected void onDestroy() {
-        DLNARendererService.stop(this);
         LiveConfig.get().clear();
         VodConfig.get().clear();
         AppDatabase.backup();

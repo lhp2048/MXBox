@@ -7,15 +7,20 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.text.TextUtils;
+
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.databinding.AdapterConfigBinding;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ConfigAdapter extends RecyclerView.Adapter<ConfigAdapter.ViewHolder> {
 
     private final OnClickListener listener;
-    private List<Config> mItems;
+    private List<Config> mItems = new ArrayList<>();
+    private String vodUrl;
+    private String liveUrl;
     private boolean readOnly;
 
     public ConfigAdapter(OnClickListener listener) {
@@ -35,9 +40,24 @@ public class ConfigAdapter extends RecyclerView.Adapter<ConfigAdapter.ViewHolder
     }
 
     public ConfigAdapter addAll(int type) {
-        mItems = Config.getAll(type);
+        mItems = new ArrayList<>(Config.getAll(type));
         if (!mItems.isEmpty() && !readOnly) mItems.remove(0);
         return this;
+    }
+
+    public ConfigAdapter setItems(List<Config> items) {
+        mItems = new ArrayList<>(items);
+        return this;
+    }
+
+    public ConfigAdapter setCurrent(String vodUrl, String liveUrl) {
+        this.vodUrl = vodUrl;
+        this.liveUrl = liveUrl;
+        return this;
+    }
+
+    public ConfigAdapter setCurrent(String url) {
+        return setCurrent(url, null);
     }
 
     public int remove(Config item) {
@@ -63,10 +83,17 @@ public class ConfigAdapter extends RecyclerView.Adapter<ConfigAdapter.ViewHolder
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Config item = mItems.get(position);
+        boolean selected = isSelected(item);
         holder.binding.text.setText(item.getDesc());
+        holder.binding.text.setSelected(selected);
         holder.binding.text.setOnClickListener(v -> listener.onTextClick(item));
         holder.binding.delete.setVisibility(readOnly ? View.GONE : View.VISIBLE);
         holder.binding.delete.setOnClickListener(v -> listener.onDeleteClick(item));
+    }
+
+    private boolean isSelected(Config item) {
+        if (item.getType() == 1) return TextUtils.equals(item.getUrl(), liveUrl);
+        return TextUtils.equals(item.getUrl(), vodUrl);
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {

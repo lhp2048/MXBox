@@ -14,16 +14,21 @@ import com.github.catvod.utils.Util;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.zip.ZipFile;
 
 import dalvik.system.DexClassLoader;
 
 public class JarLoader {
+
+    private static final int MAX_LOADERS = 3;
 
     private final ConcurrentHashMap<String, DexClassLoader> loaders;
     private final ConcurrentHashMap<String, Method> methods;
@@ -47,18 +52,69 @@ public class JarLoader {
         recent = null;
     }
 
+    public void onConfigSwitch() {
+        releaseSpiders();
+        trimLoaders();
+    }
+
+    private void releaseSpiders() {
+        spiders.values().forEach(Spider::destroy);
+        spiders.clear();
+    }
+
+    private void trimLoaders() {
+        if (loaders.size() <= MAX_LOADERS) return;
+        for (String key : loaders.keySet().toArray(new String[0])) {
+            if (loaders.size() <= MAX_LOADERS) break;
+            if (key.equals(recent)) continue;
+            loaders.remove(key);
+            methods.remove(key);
+            locks.remove(key);
+        }
+    }
+
     public void setRecent(String recent) {
         this.recent = recent;
     }
 
-    private void load(String key, File file) {
-        if (Thread.interrupted()) return;
-        if (!Path.exists(file) || !file.setReadOnly()) return;
-        String cachePath = Path.jar().getAbsolutePath();
-        DexClassLoader loader = new DexClassLoader(file.getAbsolutePath(), cachePath, cachePath, App.get().getClassLoader());
-        invokeInit(loader);
-        invokeProxy(key, loader);
-        loaders.put(key, loader);
+    private boolean load(String key, File file) {
+        if (Thread.interrupted()) return false;
+        if (!Path.exists(file)) return false;
+        if (!isValidJar(file)) {
+            file.delete();
+            return false;
+        }
+        if (!file.setReadOnly()) return false;
+        try {
+            String cachePath = Path.jar().getAbsolutePath();
+            DexClassLoader loader = new DexClassLoader(file.getAbsolutePath(), cachePath, cachePath, App.get().getClassLoader());
+            invokeInit(loader);
+            invokeProxy(key, loader);
+            loaders.put(key, loader);
+            return true;
+        } catch (Throwable e) {
+            e.printStackTrace();
+            file.delete();
+            loaders.remove(key);
+            methods.remove(key);
+            return false;
+        }
+    }
+
+    private boolean isValidJar(File file) {
+        if (file.length() < 22) return false;
+        try (FileInputStream in = new FileInputStream(file)) {
+            byte[] head = new byte[4];
+            if (in.read(head) != 4) return false;
+            if (head[0] != 'P' || head[1] != 'K') return false;
+        } catch (IOException e) {
+            return false;
+        }
+        try (ZipFile zip = new ZipFile(file)) {
+            return zip.getEntry("classes.dex") != null || zip.getEntry("classes2.dex") != null;
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     private void invokeInit(DexClassLoader loader) {
@@ -81,24 +137,25 @@ public class JarLoader {
         }
     }
 
-    public void parseJar(String key, String jar) {
-        if (loaders.containsKey(key)) return;
+    public boolean parseJar(String key, String jar) {
+        if (loaders.containsKey(key)) return true;
         if (jar.startsWith("assets")) jar = UrlUtil.convert(jar);
         Object lock = locks.computeIfAbsent(key, k -> new Object());
         synchronized (lock) {
-            if (loaders.containsKey(key)) return;
+            if (loaders.containsKey(key)) return true;
             String[] texts = jar.split(";md5;");
             String md5 = texts.length > 1 ? texts[1].trim() : "";
             if (md5.startsWith("http")) md5 = OkHttp.string(md5).trim();
             jar = texts[0];
             if (!md5.isEmpty() && Util.equals(jar, md5)) {
-                load(key, Path.jar(jar));
+                return load(key, Path.jar(jar));
             } else if (jar.startsWith("http")) {
-                load(key, Download.create(jar, Path.jar(jar)).get());
+                return load(key, Download.create(jar, Path.jar(jar)).get());
             } else if (jar.startsWith("file")) {
-                load(key, Path.local(jar));
+                return load(key, Path.local(jar));
             }
         }
+        return loaders.containsKey(key);
     }
 
     public DexClassLoader dex(String jar) {

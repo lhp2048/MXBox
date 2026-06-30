@@ -212,7 +212,7 @@ public class CustomKeyDown extends GestureDetector.SimpleOnGestureListener imple
     @Override
     public boolean onScale(@NonNull ScaleGestureDetector detector) {
         scale *= detector.getScaleFactor();
-        scale = Math.clamp(scale, 1.0f, 5.0f);
+        scale = Util.clamp(scale, 1.0f, 5.0f);
         videoView.setPivotX(detector.getFocusX());
         videoView.setPivotY(detector.getFocusY());
         videoView.setScaleX(scale);

@@ -162,7 +162,7 @@ public class Util {
     }
 
     public static boolean isLeanback() {
-        return "leanback".equals(BuildConfig.FLAVOR_mode);
+        return "tv".equals(BuildConfig.FLAVOR_mode);
     }
 
     public static boolean isMobile() {
@@ -189,5 +189,22 @@ public class Util {
     public static String timeMs(long timeMs) {
         StringBuilder sb = new StringBuilder();
         return format(sb, new Formatter(sb, Locale.getDefault()), timeMs);
+    }
+
+    public static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    public static int clamp(long value, int min, int max) {
+        long clamped = Math.max(min, Math.min(max, value));
+        return (int) clamped;
+    }
+
+    public static long clamp(long value, long min, long max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    public static float clamp(float value, float min, float max) {
+        return Math.max(min, Math.min(max, value));
     }
 }

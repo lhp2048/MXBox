@@ -13,6 +13,7 @@ import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.config.LiveConfig;
+import com.fongmi.android.tv.api.config.MxBoxUserSourceStore;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.api.config.WallConfig;
 import com.fongmi.android.tv.bean.Config;
@@ -36,6 +37,7 @@ public class ConfigDialog extends BaseAlertDialog {
     private DialogConfigBinding binding;
     private boolean append = true;
     private boolean edit;
+    private boolean userSource;
     private String url;
     private int type;
 
@@ -60,6 +62,11 @@ public class ConfigDialog extends BaseAlertDialog {
 
     public ConfigDialog edit() {
         edit = true;
+        return this;
+    }
+
+    public ConfigDialog userSource() {
+        userSource = true;
         return this;
     }
 
@@ -138,8 +145,9 @@ public class ConfigDialog extends BaseAlertDialog {
         String text = binding.text.getText().toString().trim();
         if (edit) Config.find(url, type).url(text).update();
         if (text.isEmpty()) Config.delete(url, type);
-        if (name.isEmpty()) ((ConfigListener) requireActivity()).setConfig(Config.find(text, type));
-        else ((ConfigListener) requireActivity()).setConfig(Config.find(text, name, type));
+        Config config = name.isEmpty() ? Config.find(text, type) : Config.find(text, name, type);
+        if (userSource && !text.isEmpty()) MxBoxUserSourceStore.add(config);
+        ((ConfigListener) requireActivity()).setConfig(config);
         dismiss();
     }
 
@@ -170,7 +178,9 @@ public class ConfigDialog extends BaseAlertDialog {
 
     private final ActivityResultLauncher<Intent> launcher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
         if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null || result.getData().getData() == null) return;
-        ((ConfigListener) requireActivity()).setConfig(Config.find("file:/" + FileChooser.getPathFromUri(result.getData().getData()).replace(Path.rootPath(), ""), type));
+        Config config = Config.find("file:/" + FileChooser.getPathFromUri(result.getData().getData()).replace(Path.rootPath(), ""), type);
+        if (userSource) MxBoxUserSourceStore.add(config);
+        ((ConfigListener) requireActivity()).setConfig(config);
         dismiss();
     });
 }

@@ -18,7 +18,6 @@ import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
-import com.fongmi.android.tv.Updater;
 import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.api.config.WallConfig;
@@ -81,8 +80,8 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         mBinding.navigation.setOnItemSelectedListener(this);
         PermissionUtil.requestNotify(this);
         initFragment(savedInstanceState);
-        Updater.create().start(this);
         initConfig();
+        setNavigation();
     }
 
     @Override
@@ -132,11 +131,13 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         return new Callback() {
             @Override
             public void success() {
+                setNavigation();
                 checkAction(getIntent());
             }
 
             @Override
             public void error(String msg) {
+                setNavigation();
                 checkAction(getIntent());
                 StateEvent.empty();
                 Notify.show(msg);
@@ -183,6 +184,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
                 RefreshEvent.home();
                 break;
             case COMMON:
+            case LIVE:
                 setNavigation();
                 break;
             case BOOT:

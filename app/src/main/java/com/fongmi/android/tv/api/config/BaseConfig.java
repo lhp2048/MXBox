@@ -4,8 +4,10 @@ import android.text.TextUtils;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.api.Decoder;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.event.ConfigEvent;
+import com.fongmi.android.tv.event.ConfigLoadEvent;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.server.Server;
 import com.fongmi.android.tv.utils.Notify;
@@ -34,6 +36,7 @@ abstract class BaseConfig {
 
     protected boolean sync;
     protected volatile Config config;
+    private volatile boolean forceNetwork;
     private volatile Future<?> future;
 
     protected abstract String getTag();
@@ -80,16 +83,52 @@ abstract class BaseConfig {
     }
 
     public void load(Callback callback) {
+        load(callback, false);
+    }
+
+    public void load(Callback callback, boolean forceNetwork) {
+        load(callback, forceNetwork, null);
+    }
+
+    public void load(Callback callback, boolean forceNetwork, Runnable prepare) {
         int id = taskId.incrementAndGet();
         if (future != null && !future.isDone()) future.cancel(true);
-        future = Task.submit(() -> loadConfig(id, config, callback));
+        future = Task.submit(() -> {
+            if (prepare != null) prepare.run();
+            loadConfig(id, config, callback, forceNetwork);
+        });
         callback.start();
     }
 
-    protected void loadConfig(int id, Config config, Callback callback) {
+    public void cancelLoad() {
+        taskId.incrementAndGet();
+        if (future != null && !future.isDone()) future.cancel(true);
+        OkHttp.cancel(getTag());
+    }
+
+    protected void loadConfig(int id, Config config, Callback callback, boolean forceNetwork) {
+        ConfigLoadEvent.start(config.getDesc(), config.getType());
         try {
             Server.get().start();
             OkHttp.cancel(getTag());
+            if (!forceNetwork && ConfigCache.isValid(config)) {
+                try {
+                    this.forceNetwork = false;
+                    ConfigLoadEvent.cacheHit(config.getType());
+                    load(config);
+                    if (taskId.get() != id) return;
+                    if (config.equals(this.config)) config.update();
+                    App.post(() -> Notify.show(config.getNotice()));
+                    App.post(callback::success);
+                    refreshInBackground(config);
+                    return;
+                } catch (Throwable cacheError) {
+                    cacheError.printStackTrace();
+                    if (isCanceled(cacheError)) return;
+                }
+            }
+            this.forceNetwork = forceNetwork;
+            ConfigLoadEvent.fetchConfig(config.getType());
             load(config);
             if (taskId.get() != id) return;
             if (config.equals(this.config)) config.update();
@@ -99,11 +138,51 @@ abstract class BaseConfig {
             e.printStackTrace();
             if (isCanceled(e)) return;
             if (taskId.get() != id) return;
-            if (TextUtils.isEmpty(config.getUrl())) App.post(() -> callback.error(""));
-            else App.post(() -> callback.error(Notify.getError(R.string.error_config_get, e)));
+            if (isLoaded()) {
+                if (config.equals(this.config)) config.update();
+                App.post(callback::success);
+                return;
+            }
+            if (TextUtils.isEmpty(config.getUrl())) {
+                App.post(() -> callback.error(""));
+                ConfigLoadEvent.error("");
+            } else {
+                String msg = Notify.getError(R.string.error_config_get, e);
+                App.post(() -> callback.error(msg));
+                ConfigLoadEvent.error(msg);
+            }
         } finally {
+            this.forceNetwork = false;
             if (taskId.get() == id) postEvent();
         }
+    }
+
+    protected String fetchConfigJson(Config config) throws Exception {
+        if (!forceNetwork && ConfigCache.isValid(config)) return config.getJson();
+        String json = Decoder.getJson(UrlUtil.convert(config.getUrl()), getTag());
+        config.setJson(json);
+        return json;
+    }
+
+    private void refreshInBackground(Config config) {
+        final String url = config.getUrl();
+        if (TextUtils.isEmpty(url)) return;
+        Task.submit(() -> {
+            try {
+                if (!url.equals(getConfig().getUrl())) return;
+                Server.get().start();
+                OkHttp.cancel(getTag());
+                forceNetwork = true;
+                load(config);
+                forceNetwork = false;
+                if (!url.equals(getConfig().getUrl())) return;
+                if (config.equals(this.config)) config.update();
+                postEvent();
+            } catch (Throwable e) {
+                forceNetwork = false;
+                if (!isCanceled(e)) e.printStackTrace();
+            }
+        });
     }
 
     protected boolean isCanceled(Throwable e) {

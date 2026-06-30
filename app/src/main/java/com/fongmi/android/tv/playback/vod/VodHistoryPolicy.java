@@ -65,6 +65,10 @@ public class VodHistoryPolicy {
     }
 
     public long startPositionMs(History history) {
-        return history == null ? C.TIME_UNSET : Math.max(history.getOpening(), history.getPosition());
+        if (history == null) return C.TIME_UNSET;
+        long position = Math.max(history.getOpening(), history.getPosition());
+        long duration = history.getDuration();
+        if (position != C.TIME_UNSET && duration > 0 && position >= duration - 5000) return C.TIME_UNSET;
+        return position;
     }
 }

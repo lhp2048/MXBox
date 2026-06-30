@@ -12,6 +12,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.os.HandlerCompat;
 
+import com.fongmi.android.tv.cast.CastReceiver;
+import com.fongmi.android.tv.MxBoxBootstrap;
+
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.hook.Hook;
 import com.github.catvod.Init;
@@ -81,7 +84,9 @@ public class App extends Application implements Application.ActivityLifecycleCal
     @Override
     public void onCreate() {
         super.onCreate();
+        MxBoxBootstrap.init();
         Notify.createChannel();
+        CastReceiver.startIfEnabled(this);
         registerActivityLifecycleCallbacks(this);
     }
 

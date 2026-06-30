@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "notice": "测试配置：仅验证播放器，请进入「直播」页面试播。",
+  "sites": [],
+  "lives": [
+    {
+      "name": "播放器测试",
+      "url": "assets://test_live.txt"
+    }
+  ],
+  "parses": []
+}

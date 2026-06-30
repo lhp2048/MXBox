@@ -32,6 +32,7 @@ import com.fongmi.android.tv.setting.DanmakuSetting;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
+import com.fongmi.android.tv.utils.UrlUtil;
 import com.fongmi.android.tv.utils.Util;
 import com.google.common.net.HttpHeaders;
 
@@ -232,7 +233,7 @@ public class PlayerManager implements ParseCallback {
     }
 
     public String getPositionTime(long delta) {
-        return Util.timeMs(Math.clamp(getPosition() + delta, 0, Math.max(0, getDuration())));
+        return Util.timeMs(Util.clamp(getPosition() + delta, 0, Math.max(0, getDuration())));
     }
 
     public long getDuration() {
@@ -290,11 +291,11 @@ public class PlayerManager implements ParseCallback {
     }
 
     public String addSpeed(float value) {
-        return setSpeed(Math.clamp(getSpeed() + value, 0.25f, 5.0f));
+        return setSpeed(Util.clamp(getSpeed() + value, 0.25f, 5.0f));
     }
 
     public String subSpeed(float value) {
-        return setSpeed(Math.clamp(getSpeed() - value, 0.25f, 5.0f));
+        return setSpeed(Util.clamp(getSpeed() - value, 0.25f, 5.0f));
     }
 
     public String toggleSpeed() {
@@ -462,7 +463,14 @@ public class PlayerManager implements ParseCallback {
     }
 
     private void startCurrent(long startPositionMs) {
-        setMediaItem(Constant.TIMEOUT_PLAY, startPositionMs);
+        setMediaItem(resolvePlayTimeout(), startPositionMs);
+    }
+
+    private long resolvePlayTimeout() {
+        if (spec != null && UrlUtil.isLocalServer(spec.getUrl())) {
+            return Math.max(Constant.TIMEOUT_PLAY, Constant.TIMEOUT_PLAY_PROXY);
+        }
+        return Constant.TIMEOUT_PLAY;
     }
 
     private Danmaku getSelectedDanmaku(List<Danmaku> items) {

@@ -55,6 +55,12 @@ public class BaseLoader {
         });
     }
 
+    public void onConfigSwitch() {
+        jarLoader.onConfigSwitch();
+        jsLoader.releaseSpiders();
+        pyLoader.releaseSpiders();
+    }
+
     public Spider getSpider(String key, String api, String ext, String jar) {
         if (isPy(api)) return pyLoader.getSpider(key, api, ext);
         else if (isJs(api)) return jsLoader.getSpider(key, api, ext, jar);
@@ -83,11 +89,12 @@ public class BaseLoader {
         return jarLoader.proxy(params);
     }
 
-    public void parseJar(String jar, boolean recent) {
-        if (TextUtils.isEmpty(jar)) return;
+    public boolean parseJar(String jar, boolean recent) {
+        if (TextUtils.isEmpty(jar)) return true;
         String key = Util.md5(jar);
-        jarLoader.parseJar(key, jar);
-        if (recent) jarLoader.setRecent(key);
+        boolean ok = jarLoader.parseJar(key, jar);
+        if (recent && ok) jarLoader.setRecent(key);
+        return ok;
     }
 
     public DexClassLoader dex(String jar) {

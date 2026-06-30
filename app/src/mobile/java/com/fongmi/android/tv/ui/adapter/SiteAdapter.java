@@ -59,6 +59,12 @@ public class SiteAdapter extends RecyclerView.Adapter<SiteAdapter.ViewHolder> {
         return mItems;
     }
 
+    public void refresh() {
+        mItems.clear();
+        addAll();
+        notifyDataSetChanged();
+    }
+
     @Override
     public int getItemCount() {
         return mItems.size();

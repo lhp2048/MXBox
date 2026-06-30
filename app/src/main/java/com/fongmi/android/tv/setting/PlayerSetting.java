@@ -1,5 +1,7 @@
 package com.fongmi.android.tv.setting;
 
+import com.fongmi.android.tv.utils.Util;
+
 import android.content.Intent;
 import android.provider.Settings;
 
@@ -22,11 +24,11 @@ public class PlayerSetting {
     private static final float MAX_SPEED = 5.0f;
 
     public static int getEngine() {
-        return Math.clamp(Prefers.getInt("player_engine", ENGINE_EXO), ENGINE_EXO, ENGINE_MPV);
+        return Util.clamp(Prefers.getInt("player_engine", ENGINE_EXO), ENGINE_EXO, ENGINE_MPV);
     }
 
     public static void putEngine(int engine) {
-        Prefers.put("player_engine", Math.clamp(engine, ENGINE_EXO, ENGINE_MPV));
+        Prefers.put("player_engine", Util.clamp(engine, ENGINE_EXO, ENGINE_MPV));
         if (!isMpv() && isTunnel()) Prefers.put("render", RENDER_SURFACE);
     }
 
@@ -51,11 +53,11 @@ public class PlayerSetting {
     }
 
     public static int getRender() {
-        return Math.clamp(Prefers.getInt("render", RENDER_SURFACE), RENDER_SURFACE, RENDER_TEXTURE);
+        return Util.clamp(Prefers.getInt("render", RENDER_SURFACE), RENDER_SURFACE, RENDER_TEXTURE);
     }
 
     public static void putRender(int render) {
-        Prefers.put("render", Math.clamp(render, RENDER_SURFACE, RENDER_TEXTURE));
+        Prefers.put("render", Util.clamp(render, RENDER_SURFACE, RENDER_TEXTURE));
         if (!isMpv() && isTunnel() && getRender() == RENDER_TEXTURE) Prefers.put("tunnel", false);
     }
 
@@ -73,27 +75,27 @@ public class PlayerSetting {
     }
 
     public static int getSize() {
-        return Math.clamp(Prefers.getInt("size", 2), MIN_SIZE, MAX_SIZE);
+        return Util.clamp(Prefers.getInt("size", 2), MIN_SIZE, MAX_SIZE);
     }
 
     public static void putSize(int size) {
-        Prefers.put("size", Math.clamp(size, MIN_SIZE, MAX_SIZE));
+        Prefers.put("size", Util.clamp(size, MIN_SIZE, MAX_SIZE));
     }
 
     public static int getScale() {
-        return Math.clamp(Prefers.getInt("scale"), MIN_SCALE, MAX_SCALE);
+        return Util.clamp(Prefers.getInt("scale"), MIN_SCALE, MAX_SCALE);
     }
 
     public static void putScale(int scale) {
-        Prefers.put("scale", Math.clamp(scale, MIN_SCALE, MAX_SCALE));
+        Prefers.put("scale", Util.clamp(scale, MIN_SCALE, MAX_SCALE));
     }
 
     public static int getBackground() {
-        return Math.clamp(Prefers.getInt("background", 2), MIN_BACKGROUND, MAX_BACKGROUND);
+        return Util.clamp(Prefers.getInt("background", 2), MIN_BACKGROUND, MAX_BACKGROUND);
     }
 
     public static void putBackground(int background) {
-        Prefers.put("background", Math.clamp(background, MIN_BACKGROUND, MAX_BACKGROUND));
+        Prefers.put("background", Util.clamp(background, MIN_BACKGROUND, MAX_BACKGROUND));
     }
 
     public static boolean isBackgroundOff() {
@@ -109,11 +111,11 @@ public class PlayerSetting {
     }
 
     public static float getSpeed() {
-        return Math.clamp(Prefers.getFloat("speed", 3), MIN_SPEED, MAX_SPEED);
+        return Util.clamp(Prefers.getFloat("speed", 3), MIN_SPEED, MAX_SPEED);
     }
 
     public static void putSpeed(float speed) {
-        Prefers.put("speed", Math.clamp(speed, MIN_SPEED, MAX_SPEED));
+        Prefers.put("speed", Util.clamp(speed, MIN_SPEED, MAX_SPEED));
     }
 
     public static boolean isCaption() {

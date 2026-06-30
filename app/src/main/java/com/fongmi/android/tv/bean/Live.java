@@ -133,6 +133,7 @@ public class Live {
             if (live.getJar().isEmpty()) live.setJar(spider);
             live.setApi(UrlUtil.convert(live.getApi()));
             live.setExt(UrlUtil.convert(live.getExt()));
+            live.setBoot(false);
             return live.trans();
         } catch (Exception e) {
             return new Live();

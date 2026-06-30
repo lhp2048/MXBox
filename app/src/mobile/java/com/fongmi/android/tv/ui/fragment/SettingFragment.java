@@ -9,6 +9,7 @@ import androidx.annotation.Nullable;
 import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.BuildConfig;
+import com.fongmi.android.tv.MxBoxBootstrap;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.Updater;
 import com.fongmi.android.tv.api.config.LiveConfig;
@@ -140,6 +141,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
 
     @Override
     public void setConfig(Config config) {
+        MxBoxBootstrap.onUserConfigChanged(config);
         if (config.getUrl().startsWith("file")) {
             PermissionUtil.requestFile(this, allGranted -> load(config));
         } else {

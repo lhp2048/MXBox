@@ -6,11 +6,17 @@ import androidx.viewbinding.ViewBinding;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.databinding.DialogSiteBinding;
+import com.fongmi.android.tv.event.DepotLoadEvent;
 import com.fongmi.android.tv.impl.SiteListener;
 import com.fongmi.android.tv.ui.adapter.SiteAdapter;
 import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
+import com.fongmi.android.tv.ui.helper.SiteDialogDepotHelper;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickListener {
 
@@ -58,6 +64,16 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
         binding.recycler.setHasFixedSize(true);
         binding.recycler.addItemDecoration(new SpaceItemDecoration(1, 8));
         binding.recycler.post(() -> binding.recycler.scrollToPosition(VodConfig.getHomeIndex()));
+        updateDepotProgress();
+    }
+
+    private void updateDepotProgress() {
+        SiteDialogDepotHelper.bind(binding.progressPanel, binding.progressBar, binding.progressText, requireContext());
+    }
+
+    private void refreshSites() {
+        adapter.refresh();
+        updateDepotProgress();
     }
 
     @Override
@@ -97,7 +113,21 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
     @Override
     public void onStart() {
         super.onStart();
-        if (adapter.getItemCount() == 0) dismiss();
+        EventBus.getDefault().register(this);
+        if (adapter.getItemCount() == 0 && !DepotLoadEvent.isLoading()) dismiss();
         else if (ResUtil.isLand(requireContext())) setWidth(0.5f);
+    }
+
+    @Override
+    public void onStop() {
+        EventBus.getDefault().unregister(this);
+        super.onStop();
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onDepotLoadEvent(DepotLoadEvent event) {
+        if (binding == null || adapter == null) return;
+        refreshSites();
+        if (event.phase == DepotLoadEvent.Phase.DONE && adapter.getItemCount() == 0) dismiss();
     }
 }

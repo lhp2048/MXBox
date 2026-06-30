@@ -2,7 +2,8 @@ package com.fongmi.android.tv.api.config;
 
 import android.text.TextUtils;
 
-import com.fongmi.android.tv.api.Decoder;
+import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.LiveApi;
 import com.fongmi.android.tv.api.loader.BaseLoader;
 import com.fongmi.android.tv.api.parser.LiveParser;
@@ -15,12 +16,16 @@ import com.fongmi.android.tv.bean.Live;
 import com.fongmi.android.tv.bean.Rule;
 import com.fongmi.android.tv.db.AppDatabase;
 import com.fongmi.android.tv.event.ConfigEvent;
+import com.fongmi.android.tv.event.ConfigLoadEvent;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.setting.LiveSetting;
+import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.UrlUtil;
 import com.github.catvod.bean.Header;
 import com.github.catvod.bean.Proxy;
 import com.github.catvod.utils.Json;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.util.ArrayList;
@@ -114,7 +119,7 @@ public class LiveConfig extends BaseConfig {
 
     @Override
     protected void load(Config config) throws Throwable {
-        String json = Decoder.getJson(UrlUtil.convert(config.getUrl()), TAG);
+        String json = fetchConfigJson(config);
         if (Json.isObj(json)) checkJson(config, Json.parse(json).getAsJsonObject());
         else parseText(config, json);
     }
@@ -151,6 +156,8 @@ public class LiveConfig extends BaseConfig {
     private void checkJson(Config config, JsonObject object) throws Throwable {
         if (object.has("msg")) {
             throw new Exception(object.get("msg").getAsString());
+        } else if (object.has("storeHouse")) {
+            parseStoreHouse(config, object);
         } else if (object.has("urls")) {
             parseDepot(config, object);
         } else {
@@ -158,8 +165,24 @@ public class LiveConfig extends BaseConfig {
         }
     }
 
+    private void parseStoreHouse(Config config, JsonObject object) throws Throwable {
+        JsonArray storeHouse = object.getAsJsonArray("storeHouse");
+        JsonArray urls = new JsonArray();
+        for (JsonElement element : storeHouse) {
+            if (!element.isJsonObject()) continue;
+            JsonObject item = element.getAsJsonObject();
+            JsonObject url = new JsonObject();
+            url.addProperty("name", Json.safeString(item, "sourceName"));
+            url.addProperty("url", Json.safeString(item, "sourceUrl"));
+            urls.add(url);
+        }
+        JsonObject wrapper = new JsonObject();
+        wrapper.add("urls", urls);
+        parseDepot(config, wrapper);
+    }
+
     private void parseDepot(Config config, JsonObject object) throws Throwable {
-        List<Depot> items = Depot.arrayFrom(object.getAsJsonArray("urls").toString());
+        List<Depot> items = Depot.arrayFrom(object.getAsJsonArray("urls"));
         List<Config> configs = new ArrayList<>();
         for (Depot item : items) configs.add(Config.find(item, LIVE));
         if (configs.isEmpty()) throw new Exception("Depot urls is empty");
@@ -185,12 +208,29 @@ public class LiveConfig extends BaseConfig {
     }
 
     private void initLive(Config config, JsonObject object) {
-        String spider = Json.safeString(object, "spider");
-        BaseLoader.get().parseJar(spider, false);
-        setLives(Json.safeListElement(object, "lives").stream().map(e -> Live.objectFrom(e, spider)).distinct().collect(Collectors.toCollection(ArrayList::new)));
+        String spider = object != null ? Json.safeString(object, "spider") : "";
+        if (!TextUtils.isEmpty(spider)) {
+            ConfigLoadEvent.parseJar(ConfigLoadEvent.TYPE_LIVE);
+            if (!BaseLoader.get().parseJar(spider, false)) {
+                App.post(() -> Notify.show(R.string.mx_load_spider_invalid));
+            }
+        }
+        java.util.LinkedHashMap<String, Live> merged = new java.util.LinkedHashMap<>();
+        for (Live live : MxBoxFeedStore.copyLives(MxBoxFeedStore.getLives())) {
+            merged.put(live.getName(), live);
+        }
+        if (object != null && !Json.isEmpty(object, "lives")) {
+            for (JsonElement element : Json.safeListElement(object, "lives")) {
+                Live live = Live.objectFrom(element, spider);
+                if (live.isEmpty()) continue;
+                merged.putIfAbsent(live.getName(), live);
+            }
+        }
+        if (merged.isEmpty()) return;
+        setLives(new ArrayList<>(merged.values()));
         Map<String, Live> items = Live.findAll().stream().collect(Collectors.toMap(Live::getName, Function.identity()));
         getLives().forEach(live -> live.sync(items.get(live.getName())));
-        setHome(config, getLives().isEmpty() ? new Live() : getLives().stream().filter(item -> item.getName().equals(config.getHome())).findFirst().orElse(getLives().get(0)), false);
+        setHome(config, getLives().get(0), false);
     }
 
     public void setKeep(Channel channel) {
@@ -274,7 +314,7 @@ public class LiveConfig extends BaseConfig {
         config.setHome(home.getName());
         if (save) config.save();
         getLives().forEach(item -> item.setSelected(home));
-        if (!save && (home.isBoot() || LiveSetting.isBoot())) ConfigEvent.boot();
+        if (!save && LiveSetting.isBoot()) ConfigEvent.boot();
     }
 
     private static class Loader {

@@ -1,5 +1,7 @@
 package com.fongmi.android.tv.playback.vod;
 
+import androidx.media3.common.C;
+
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Flag;
 import com.fongmi.android.tv.bean.Result;
@@ -21,12 +23,14 @@ public class VodFallbackPolicy {
         this.host = host;
     }
 
-    public void playbackError() {
-        fallbackToNextLineOrSource();
+    public boolean playbackError(String msg) {
+        if (tryFallback(msg)) return true;
+        host.resetPlaybackForError(msg);
+        return false;
     }
 
     public void emptyFlag() {
-        fallbackToNextLineOrSource();
+        tryFallback("");
     }
 
     public void emptyDetail() {
@@ -55,16 +59,31 @@ public class VodFallbackPolicy {
         host.onSearchResult();
     }
 
-    private void fallbackToNextLineOrSource() {
-        if (!host.isSiteChangeable()) return;
-        if (fallbackToNextLine()) return;
-        fallbackToNextSource(false);
+    private boolean tryFallback(String msg) {
+        boolean recoverable = VodPlayErrorPolicy.isRecoverable(msg);
+        if ((recoverable || host.isSiteChangeable()) && fallbackToNextLine()) return true;
+        if (host.isSiteChangeable()) {
+            fallbackToNextSource(false);
+            return true;
+        }
+        return false;
     }
 
     private boolean fallbackToNextLine() {
-        int position = state.getFlagPosition() + 1;
-        if (position >= state.getFlags().size()) return false;
-        Flag flag = state.getFlags().get(position);
+        int start = state.getFlagPosition() + 1;
+        for (int i = start; i < state.getFlags().size(); i++) {
+            Flag flag = state.getFlags().get(i);
+            if (!flag.hasDirectPlay()) continue;
+            return switchFallbackLine(flag);
+        }
+        for (int i = start; i < state.getFlags().size(); i++) {
+            return switchFallbackLine(state.getFlags().get(i));
+        }
+        return false;
+    }
+
+    private boolean switchFallbackLine(Flag flag) {
+        if (state.getHistory() != null) state.getHistory().setPosition(C.TIME_UNSET);
         host.showSwitchLine(flag);
         controller.selectFlag(flag);
         return true;
