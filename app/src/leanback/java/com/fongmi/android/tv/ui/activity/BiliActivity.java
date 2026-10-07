@@ -36,6 +36,7 @@ import com.fongmi.android.tv.bili.BiliSearchResult;
 import com.fongmi.android.tv.bili.BiliSession;
 import com.fongmi.android.tv.bili.BiliStreams;
 import com.fongmi.android.tv.bili.BiliUp;
+import com.fongmi.android.tv.bili.BiliUpStore;
 import com.fongmi.android.tv.bili.BiliVideo;
 import com.fongmi.android.tv.bili.BiliVideoPage;
 import com.fongmi.android.tv.databinding.ActivityBiliBinding;
@@ -68,6 +69,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     private static final int LIST = 4;
     private static final int SEEK = 5;
     private static final int FAV = 6;
+    private static final int FAV_UP = 15;
     private static final int MORE = 7;
     private static final int QUALITY = 8;
     private static final int RESULT_TAB = 9;
@@ -82,11 +84,17 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     private static final int RECOMMEND = 0;
     private static final int FOLLOW = 1;
     private static final int FAVORITE = 2;
+    private static final int UP = 3;
     private static final int KIND_RECOMMEND = 0;
     private static final int KIND_FOLLOW = 1;
     private static final int KIND_FAVORITE = 2;
     private static final int KIND_SPACE = 3;
     private static final int KIND_SEARCH = 4;
+    private static final int KIND_UP = 5;
+    private static final int SPACE_NONE = 0;
+    private static final int SPACE_SEARCH = 1;
+    private static final int SPACE_PLAY = 2;
+    private static final int SPACE_UPS = 3;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable idleTask = this::onIdle;
@@ -98,6 +106,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     private final List<BiliVideo> gridItems = new ArrayList<>();
     private final List<BiliVideo> searchVideos = new ArrayList<>();
     private final List<BiliUp> searchUps = new ArrayList<>();
+    private final List<BiliUp> savedUps = new ArrayList<>();
     private final List<BiliQn> qualities = new ArrayList<>();
 
     private ActivityBiliBinding binding;
@@ -106,6 +115,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     private BiliVideoAdapter gridAdapter;
     private BiliVideoAdapter searchVideoAdapter;
     private BiliUpAdapter searchUpAdapter;
+    private BiliUpAdapter upListAdapter;
     private int channel = RECOMMEND;
     private int kind = KIND_RECOMMEND;
     private int focus = TABS;
@@ -152,7 +162,13 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     private boolean previewWindow;
     private boolean searchPaused;
     private long searchPausePosition;
-    private boolean upFromSearch;
+    private int upIndex;
+    private int gridIndex;
+    private int gridToken;
+    private boolean gridLoading;
+    private boolean gridSelectAppended;
+    private int spaceOrigin;
+    private boolean closing;
     private int previewIndex = -1;
     private int previewToken;
     private BiliVideo previewRestoreVideo;
@@ -182,12 +198,13 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         playback = new BiliPlayback(this);
         binding.player.setPlayer(playback.player());
         listAdapter = new BiliVideoAdapter(R.layout.item_bili_row, this::onListClick, true);
-        gridAdapter = new BiliVideoAdapter(R.layout.item_bili_space, this::onGridClick);
+        upListAdapter = new BiliUpAdapter(R.layout.item_bili_up, this::onSavedUp, true);
+        gridAdapter = new BiliVideoAdapter(R.layout.item_bili_card, this::onGridClick, true);
         searchVideoAdapter = new BiliVideoAdapter(R.layout.item_bili_card, this::onSearchVideo, true);
         searchUpAdapter = new BiliUpAdapter(this::onSearchUp);
         binding.list.setLayoutManager(new LinearLayoutManager(this));
         binding.list.setAdapter(listAdapter);
-        binding.grid.setLayoutManager(new LinearLayoutManager(this));
+        binding.grid.setLayoutManager(new GridLayoutManager(this, RESULT_SPAN));
         binding.grid.setAdapter(gridAdapter);
         binding.searchList.setLayoutManager(new GridLayoutManager(this, RESULT_SPAN));
         binding.searchList.setAdapter(searchVideoAdapter);
@@ -309,6 +326,13 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     private void openChannel(int channel, int restoreIndex, boolean play) {
         if (kind == KIND_RECOMMEND && channel != RECOMMEND) snapshotRecommend();
         this.channel = channel;
+        if (channel == UP) {
+            kind = KIND_UP;
+            showSavedUps();
+            showBrowse();
+            return;
+        }
+        binding.list.setAdapter(listAdapter);
         kind = channel;
         if (channel == RECOMMEND && recommendLoaded) {
             restoreRecommend();
@@ -455,10 +479,31 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     private String emptyText() {
         if (channel == FOLLOW) return getString(R.string.bili_empty_follow);
         if (channel == FAVORITE) return getString(R.string.bili_empty_fav);
+        if (channel == UP) return getString(R.string.bili_empty_up);
         return getString(R.string.bili_empty);
     }
 
+    private void showSavedUps() {
+        savedUps.clear();
+        savedUps.addAll(BiliUpStore.all());
+        if (upIndex >= savedUps.size()) upIndex = 0;
+        binding.list.setAdapter(upListAdapter);
+        upListAdapter.setItems(savedUps);
+        upListAdapter.setSelected(savedUps.isEmpty() ? -1 : upIndex);
+        binding.empty.setText(savedUps.isEmpty() ? emptyText() : "");
+        binding.empty.setVisibility(savedUps.isEmpty() ? View.VISIBLE : View.GONE);
+        binding.list.setVisibility(savedUps.isEmpty() || isGone(binding.browse) ? View.GONE : View.VISIBLE);
+    }
+
+    private boolean currentListEmpty() {
+        return channel == UP ? savedUps.isEmpty() : queue.isEmpty();
+    }
+
     private void moveList(int delta) {
+        if (channel == UP) {
+            moveUpList(delta);
+            return;
+        }
         int next = index + delta;
         if (next < 0) {
             focus(TABS);
@@ -476,6 +521,28 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         listAdapter.setSelected(index);
         binding.list.scrollToPosition(index);
         if (next >= queue.size() - 1 && hasMore) loadQueue(true, false);
+    }
+
+    private void moveUpList(int delta) {
+        int next = upIndex + delta;
+        if (next < 0) {
+            focus(TABS);
+            return;
+        }
+        if (next >= savedUps.size()) return;
+        upIndex = next;
+        upListAdapter.setSelected(upIndex);
+        binding.list.scrollToPosition(upIndex);
+    }
+
+    private void openSavedUp() {
+        if (upIndex < 0 || upIndex >= savedUps.size()) return;
+        onSavedUp(savedUps.get(upIndex));
+    }
+
+    private void onSavedUp(BiliUp up) {
+        if (up == null) return;
+        openSpace(up.getMid(), up.getName(), up.getFace(), SPACE_UPS);
     }
 
     private void playIndex(int target, long position) {
@@ -509,9 +576,13 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
                 BiliStreams streams = BiliApi.resolve(video.getBvid(), BiliSession.wantedQn());
                 App.post(() -> startPlay(token, streams, position, video));
             } catch (BiliException e) {
-                App.post(() -> Notify.show(getString(R.string.bili_unsupported)));
+                App.post(() -> {
+                    if (closing || isFinishing()) return;
+                    Notify.show(getString(R.string.bili_unsupported));
+                });
             } catch (IOException e) {
                 App.post(() -> {
+                    if (closing || isFinishing()) return;
                     if ("auth".equals(e.getMessage())) showQr();
                     else Notify.show(getString(R.string.bili_play_fail));
                 });
@@ -520,7 +591,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     }
 
     private void startPlay(int token, BiliStreams streams, long position, BiliVideo video) {
-        if (token != playToken || isFinishing()) return;
+        if (token != playToken || closing || isFinishing()) return;
         if (previewing && token == previewToken) {
             playbackReady = false;
             playingToken = token;
@@ -537,8 +608,8 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         playingToken = token;
         Log.i(BiliPlayback.TAG, "start " + video.getBvid() + " pos=" + position);
         playback.play(streams, position);
-        if (searchPaused && isVisible(binding.searchPanel)) playback.pause();
-        if (position == 0 && !searchPaused) showMeta(video);
+        if (shouldHoldPlayback()) playback.pause();
+        if (position == 0 && !searchPaused && !isVisible(binding.gridPanel)) showMeta(video);
     }
 
     private void showMeta(BiliVideo video) {
@@ -559,6 +630,8 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         if (playingVideo == null) return;
         boolean fav = BiliFavoriteStore.isFavorite(playingVideo.getBvid());
         binding.fav.setText(fav ? R.string.bili_unfav : R.string.bili_fav);
+        boolean favUp = BiliUpStore.isFavorite(playingVideo.getMid());
+        binding.favUp.setText(favUp ? R.string.bili_unfav_up : R.string.bili_fav_up);
     }
 
     private void toggleFav() {
@@ -566,6 +639,15 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         boolean now = BiliFavoriteStore.toggle(playingVideo);
         binding.fav.setText(now ? R.string.bili_unfav : R.string.bili_fav);
         if (channel == FAVORITE && kind == KIND_FAVORITE) openChannel(FAVORITE, 0, false);
+    }
+
+    private void toggleFavUp() {
+        if (playingVideo == null || playingVideo.getMid() <= 0) return;
+        BiliUp known = BiliUpStore.find(playingVideo.getMid());
+        String face = known == null ? "" : known.getFace();
+        boolean now = BiliUpStore.toggle(new BiliUp(playingVideo.getMid(), playingVideo.getAuthor(), face));
+        binding.favUp.setText(now ? R.string.bili_unfav_up : R.string.bili_fav_up);
+        if (channel == UP) showSavedUps();
     }
 
     private void showBrowse() {
@@ -598,17 +680,19 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         binding.tabRecommend.setSelected(channel == RECOMMEND);
         binding.tabFollow.setSelected(channel == FOLLOW);
         binding.tabFavorite.setSelected(channel == FAVORITE);
-        binding.list.setVisibility(queue.isEmpty() || isGone(binding.browse) ? View.GONE : View.VISIBLE);
+        binding.tabUp.setSelected(channel == UP);
+        binding.list.setVisibility(currentListEmpty() || isGone(binding.browse) ? View.GONE : View.VISIBLE);
     }
 
     private void focus(int target) {
-        if (target == LIST && queue.isEmpty()) target = TABS;
+        if (target == LIST && currentListEmpty()) target = TABS;
         if (target == SEARCH) unlockSearch();
         else lockSearch();
         focus = target;
-        listAdapter.setArmed(target == LIST);
+        listAdapter.setArmed(channel != UP && target == LIST);
+        upListAdapter.setArmed(channel == UP && target == LIST);
         if (target == LIST) {
-            binding.list.scrollToPosition(index);
+            binding.list.scrollToPosition(channel == UP ? upIndex : index);
             if (binding.list.requestFocus()) return;
             focus = TABS;
             listAdapter.setArmed(false);
@@ -625,6 +709,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
             case SETTING -> binding.setting;
             case LIST -> binding.list;
             case FAV -> binding.fav;
+            case FAV_UP -> binding.favUp;
             case MORE -> binding.more;
             case QUALITY -> binding.quality;
             case SEEK -> binding.position;
@@ -633,21 +718,8 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     }
 
     private void focusGrid() {
-        binding.grid.scrollToPosition(0);
-        focusGridItem(4);
-    }
-
-    private void focusGridItem(int tries) {
-        binding.grid.post(() -> {
-            View focused = binding.grid.findFocus();
-            if (isFinishing() || !isVisible(binding.gridPanel) || gridAdapter.getItemCount() == 0 || (focused != null && focused != binding.grid)) return;
-            RecyclerView.ViewHolder holder = binding.grid.findViewHolderForAdapterPosition(0);
-            if (holder != null) {
-                holder.itemView.requestFocus();
-                return;
-            }
-            if (tries > 0) focusGridItem(tries - 1);
-        });
+        binding.grid.scrollToPosition(gridIndex);
+        binding.grid.requestFocus();
     }
 
     private void unlockSearch() {
@@ -679,28 +751,44 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     private TextView currentTab() {
         if (channel == FOLLOW) return binding.tabFollow;
         if (channel == FAVORITE) return binding.tabFavorite;
+        if (channel == UP) return binding.tabUp;
         return binding.tabRecommend;
     }
 
     private void switchTab(int delta) {
         int next = channel + delta;
-        if (next < RECOMMEND || next > FAVORITE || next == channel) return;
+        if (next < RECOMMEND || next > UP || next == channel) return;
         openChannel(next, 0, false);
     }
 
     private void openMore() {
         if (playingVideo == null) return;
-        openSpace(playingVideo.getMid(), playingVideo.getAuthor(), "", false);
+        BiliUp saved = BiliUpStore.find(playingVideo.getMid());
+        String name = playingVideo.getAuthor();
+        String face = "";
+        if (saved != null) {
+            if (name == null || name.isEmpty()) name = saved.getName();
+            face = saved.getFace();
+        }
+        openSpace(playingVideo.getMid(), name, face, SPACE_PLAY);
     }
 
-    private void openSpace(long mid, String name, String face, boolean fromSearch) {
+    private void openSpace(long mid, String name, String face, int origin) {
         if (mid <= 0) return;
-        if (fromSearch) endPreview(true);
-        upFromSearch = fromSearch;
+        holdPlayback();
+        if (origin == SPACE_SEARCH) endPreview(true);
+        spaceOrigin = origin;
         spaceMid = mid;
+        BiliUpStore.remember(new BiliUp(mid, name, face));
         gridItems.clear();
         gridPage = 1;
         gridMore = false;
+        gridIndex = 0;
+        gridSelectAppended = false;
+        gridToken++;
+        gridLoading = false;
+        gridAdapter.setItems(gridItems);
+        gridAdapter.setSelected(-1);
         binding.gridTitle.setText(name == null || name.isEmpty() ? getString(R.string.bili_more) : name);
         if (face == null || face.isEmpty()) {
             binding.upFace.setVisibility(View.GONE);
@@ -716,25 +804,20 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     }
 
     private void loadGrid(boolean append) {
-        if (loading) return;
-        loading = true;
+        if (gridLoading) return;
+        gridLoading = true;
+        int token = ++gridToken;
         int requestPage = append ? gridPage : 1;
         long mid = spaceMid;
         Task.execute(() -> {
             try {
                 BiliVideoPage result = BiliApi.space(mid, requestPage);
-                App.post(() -> {
-                    loading = false;
-                    if (!append) gridItems.clear();
-                    gridItems.addAll(result.getItems());
-                    gridMore = result.hasMore();
-                    gridPage = result.getNextPage();
-                    gridAdapter.setItems(gridItems);
-                    if (!append) focusGrid();
-                });
+                App.post(() -> applyGrid(token, mid, result, append));
             } catch (IOException e) {
                 App.post(() -> {
-                    loading = false;
+                    if (token != gridToken) return;
+                    gridLoading = false;
+                    gridSelectAppended = false;
                     if ("auth".equals(e.getMessage())) showQr();
                     else Notify.show(getString(R.string.bili_load_fail));
                 });
@@ -742,12 +825,94 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         });
     }
 
+    private void applyGrid(int token, long mid, BiliVideoPage result, boolean append) {
+        if (token != gridToken || mid != spaceMid || isFinishing()) return;
+        gridLoading = false;
+        int before = gridItems.size();
+        if (!append) gridItems.clear();
+        gridItems.addAll(result.getItems());
+        gridMore = result.hasMore();
+        gridPage = result.getNextPage();
+        gridAdapter.setItems(gridItems);
+        if (gridSelectAppended) {
+            gridSelectAppended = false;
+            if (append && gridItems.size() > before) selectGrid(before);
+            return;
+        }
+        if (!append) {
+            gridIndex = 0;
+            gridAdapter.setSelected(gridItems.isEmpty() ? -1 : 0);
+            gridAdapter.setArmed(!gridItems.isEmpty());
+            focusGrid();
+        }
+    }
+
+    private void selectGrid(int next) {
+        if (next < 0 || next >= gridItems.size()) return;
+        gridIndex = next;
+        gridAdapter.setSelected(gridIndex);
+        gridAdapter.setArmed(true);
+        binding.grid.scrollToPosition(gridIndex);
+    }
+
+    private void moveGrid(int delta) {
+        int count = gridItems.size();
+        if (count == 0) return;
+        int column = gridIndex % RESULT_SPAN;
+        int next = gridIndex + delta;
+        if (delta == -1 && column == 0) return;
+        if (delta == 1 && (column == RESULT_SPAN - 1 || next >= count)) return;
+        if (delta == -RESULT_SPAN && gridIndex < RESULT_SPAN) return;
+        if (delta == RESULT_SPAN) {
+            if (next < count) {
+                selectGrid(next);
+                return;
+            }
+            int lastRowStart = ((count - 1) / RESULT_SPAN) * RESULT_SPAN;
+            if (gridIndex < lastRowStart) {
+                selectGrid(count - 1);
+                return;
+            }
+            if (gridMore) {
+                gridSelectAppended = true;
+                loadGrid(true);
+            }
+            return;
+        }
+        if (next < 0 || next >= count) return;
+        selectGrid(next);
+    }
+
+    private boolean onGridKey(int key) {
+        if (key == KeyEvent.KEYCODE_DPAD_LEFT) {
+            moveGrid(-1);
+            return true;
+        }
+        if (key == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            moveGrid(1);
+            return true;
+        }
+        if (key == KeyEvent.KEYCODE_DPAD_UP) {
+            moveGrid(-RESULT_SPAN);
+            return true;
+        }
+        if (key == KeyEvent.KEYCODE_DPAD_DOWN) {
+            moveGrid(RESULT_SPAN);
+            return true;
+        }
+        if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) {
+            onGridClick(gridIndex);
+            return true;
+        }
+        return false;
+    }
+
     private void onGridClick(int position) {
         if (position < 0 || position >= gridItems.size()) return;
         if (kind == KIND_RECOMMEND) snapshotRecommend();
         searchPaused = false;
-        if (upFromSearch) clearSearchInput();
-        upFromSearch = false;
+        if (spaceOrigin == SPACE_SEARCH) clearSearchInput();
+        spaceOrigin = SPACE_NONE;
         queue.clear();
         queue.addAll(gridItems);
         kind = KIND_SPACE;
@@ -779,7 +944,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
 
     private void openBiliSearch() {
         stopTyping();
-        pauseForSearch();
+        holdPlayback();
         show(binding.searchPanel);
         hide(binding.browse);
         hide(binding.control);
@@ -795,15 +960,19 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         focusBiliKeys();
     }
 
-    private void pauseForSearch() {
-        if (!searchPaused && playback.player().isPlaying()) {
+    private boolean shouldHoldPlayback() {
+        return isVisible(binding.gridPanel) || (searchPaused && isVisible(binding.searchPanel));
+    }
+
+    private void holdPlayback() {
+        if (!searchPaused && !previewing && playback.player().isPlaying()) {
             searchPaused = true;
             searchPausePosition = playback.player().getCurrentPosition();
         }
         playback.pause();
     }
 
-    private void resumeFromSearch() {
+    private void releasePlayback() {
         if (!searchPaused) return;
         searchPaused = false;
         int state = playback.player().getPlaybackState();
@@ -1288,11 +1457,12 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
                 App.post(() -> startPlay(token, streams, 0, video));
             } catch (BiliException e) {
                 App.post(() -> {
-                    if (token == playToken) Notify.show(getString(R.string.bili_unsupported));
+                    if (token != playToken || closing || isFinishing()) return;
+                    Notify.show(getString(R.string.bili_unsupported));
                 });
             } catch (IOException e) {
                 App.post(() -> {
-                    if (token != playToken) return;
+                    if (token != playToken || closing || isFinishing()) return;
                     if ("auth".equals(e.getMessage())) showQr();
                     else Notify.show(getString(R.string.bili_play_fail));
                 });
@@ -1362,7 +1532,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         hasMore = searchVideoMore;
         page = searchPage;
         listAdapter.setItems(queue);
-        upFromSearch = false;
+        spaceOrigin = SPACE_NONE;
         hide(binding.searchPanel);
         showPure();
         if (keep) {
@@ -1377,7 +1547,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     }
 
     private void onSearchUp(BiliUp up) {
-        openSpace(up.getMid(), up.getName(), up.getFace(), true);
+        openSpace(up.getMid(), up.getName(), up.getFace(), SPACE_SEARCH);
     }
 
     private void onListClick(int position) {
@@ -1448,6 +1618,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
 
     @Override
     public void onPlaybackStateChanged(int state) {
+        if (closing || isFinishing()) return;
         Log.i(BiliPlayback.TAG, "state=" + state);
         if (state == Player.STATE_READY) playbackReady = true;
         if (state != Player.STATE_ENDED || playingToken != playToken || previewing) return;
@@ -1463,6 +1634,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
 
     @Override
     public void onPlayerError(PlaybackException error) {
+        if (closing || isFinishing()) return;
         playbackReady = false;
         Log.e(BiliPlayback.TAG, "error " + error.errorCode + " " + error.getErrorCodeName() + " " + error.getMessage(), error);
         Notify.show(getString(R.string.bili_play_fail));
@@ -1480,7 +1652,8 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
             if (onSearchPanelKey(key)) return true;
             return super.dispatchKeyEvent(event);
         }
-        if (isVisible(binding.qr) || isVisible(binding.gridPanel)) return super.dispatchKeyEvent(event);
+        if (isVisible(binding.qr)) return super.dispatchKeyEvent(event);
+        if (isVisible(binding.gridPanel)) return onGridKey(key) || super.dispatchKeyEvent(event);
         if (isVisible(binding.control)) return onControlKey(key) || super.dispatchKeyEvent(event);
         if (isVisible(binding.browse)) return onBrowseKey(key) || super.dispatchKeyEvent(event);
         return onPureKey(key) || super.dispatchKeyEvent(event);
@@ -1539,6 +1712,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
             if (focus == SETTING) showSettings();
             else if (focus == CODE) showSearchQr();
             else if (focus == SEARCH) openBiliSearch();
+            else if (focus == LIST && channel == UP) openSavedUp();
             else if (focus == LIST && index != playingIndex) playIndex(index, 0);
             else if (focus == LIST) showControl();
             else if (focus == TABS && channel == RECOMMEND) refreshRecommend();
@@ -1552,13 +1726,15 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         if (key == KeyEvent.KEYCODE_DPAD_LEFT) {
             if (focus == SEEK) playback.seekBy(-10000);
             else if (focus == QUALITY) focus(MORE);
-            else if (focus == MORE) focus(FAV);
+            else if (focus == MORE) focus(FAV_UP);
+            else if (focus == FAV_UP) focus(FAV);
             tick();
             return true;
         }
         if (key == KeyEvent.KEYCODE_DPAD_RIGHT) {
             if (focus == SEEK) playback.seekBy(10000);
-            else if (focus == FAV) focus(MORE);
+            else if (focus == FAV) focus(FAV_UP);
+            else if (focus == FAV_UP) focus(MORE);
             else if (focus == MORE) focus(QUALITY);
             tick();
             return true;
@@ -1573,6 +1749,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         }
         if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) {
             if (focus == FAV) toggleFav();
+            else if (focus == FAV_UP) toggleFavUp();
             else if (focus == MORE) openMore();
             else if (focus == QUALITY) showQuality();
             else {
@@ -1600,13 +1777,19 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         }
         if (isVisible(binding.gridPanel)) {
             hide(binding.gridPanel);
-            if (upFromSearch) {
-                upFromSearch = false;
+            int origin = spaceOrigin;
+            spaceOrigin = SPACE_NONE;
+            if (origin == SPACE_SEARCH) {
                 show(binding.searchPanel);
                 if (resultsOpen) focusResultList();
                 else focusBiliKeys();
+            } else if (origin == SPACE_UPS) {
+                showBrowse();
+                focus(LIST);
+                releasePlayback();
             } else {
                 showPure();
+                releasePlayback();
             }
         } else if (isVisible(binding.searchPanel)) {
             if (resultsOpen) showBiliResults(false);
@@ -1614,7 +1797,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
                 hide(binding.searchPanel);
                 clearSearchInput();
                 showBrowse();
-                resumeFromSearch();
+                releasePlayback();
             }
         } else if (isVisible(binding.control)) {
             showPure();
@@ -1627,6 +1810,12 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     }
 
     @Override
+    public void finish() {
+        detachPlayback();
+        super.finish();
+    }
+
+    @Override
     protected void onDestroy() {
         polling = false;
         if (BiliSession.isLoggedIn()) {
@@ -1634,9 +1823,16 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
             memoryChannel = channel;
             memoryIndex = playingIndex;
         }
-        handler.removeCallbacksAndMessages(null);
+        detachPlayback();
         if (playback != null) playback.release();
         super.onDestroy();
+    }
+
+    private void detachPlayback() {
+        if (closing) return;
+        closing = true;
+        handler.removeCallbacksAndMessages(null);
+        if (playback != null) playback.player().removeListener(this);
     }
 
     private void show(View view) {

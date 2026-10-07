@@ -23,12 +23,20 @@ public class BiliUpAdapter extends RecyclerView.Adapter<BiliUpAdapter.Holder> {
     }
 
     private final List<BiliUp> items = new ArrayList<>();
+    private final int layout;
     private final Listener listener;
+    private final boolean circle;
     private int selected = -1;
     private boolean armed;
 
     public BiliUpAdapter(Listener listener) {
+        this(R.layout.item_bili_card, listener, false);
+    }
+
+    public BiliUpAdapter(int layout, Listener listener, boolean circle) {
+        this.layout = layout;
         this.listener = listener;
+        this.circle = circle;
     }
 
     public void setSelected(int selected) {
@@ -51,7 +59,7 @@ public class BiliUpAdapter extends RecyclerView.Adapter<BiliUpAdapter.Holder> {
     @NonNull
     @Override
     public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_bili_card, parent, false);
+        View view = LayoutInflater.from(parent.getContext()).inflate(layout, parent, false);
         return new Holder(view);
     }
 
@@ -60,10 +68,12 @@ public class BiliUpAdapter extends RecyclerView.Adapter<BiliUpAdapter.Holder> {
         BiliUp up = items.get(position);
         holder.title.setText(up.getName());
         holder.author.setText("");
+        holder.author.setVisibility(circle ? View.GONE : View.VISIBLE);
         holder.itemView.setSelected(position == selected);
         holder.itemView.setActivated(armed && position == selected);
         holder.itemView.setBackgroundResource(R.drawable.bili_list_item_bg);
-        Glide.with(holder.cover).load(up.getFace()).into(holder.cover);
+        if (circle) Glide.with(holder.cover).load(up.getFace()).circleCrop().into(holder.cover);
+        else Glide.with(holder.cover).load(up.getFace()).into(holder.cover);
         holder.itemView.setOnClickListener(v -> listener.onClick(up));
     }
 
