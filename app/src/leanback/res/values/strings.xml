@@ -7,6 +7,7 @@
     <string name="home_keep">Keep</string>
     <string name="home_push">Push</string>
     <string name="home_setting">Setting</string>
+    <string name="home_bili">Bilibili</string>
     <string name="home_history">History</string>
     <string name="home_recommend">Recommend</string>
 
@@ -16,5 +17,32 @@
     <!-- Push -->
     <string name="push_clip">Push clipboard content</string>
     <string name="push_info">Scan QR Code or enter the URL in browser\n<xliff:g name="name">%s</xliff:g></string>
+
+    <string name="bili_search_hint">Search videos or uploaders</string>
+    <string name="bili_search_code">Scan to search</string>
+    <string name="bili_search_history">History</string>
+    <string name="bili_search_suggest">Suggestions</string>
+    <string name="bili_search_code_hint">Scan with your phone, then send a Bilibili search</string>
+    <string name="bili_setting">Settings</string>
+    <string name="bili_tab_recommend">Recommend</string>
+    <string name="bili_tab_follow">Following</string>
+    <string name="bili_tab_favorite">Favorites</string>
+    <string name="bili_fav">Favorite</string>
+    <string name="bili_unfav">Unfavorite</string>
+    <string name="bili_more">More videos</string>
+    <string name="bili_quality">Quality</string>
+    <string name="bili_qr">Scan with the Bilibili app to sign in</string>
+    <string name="bili_qr_scanned">Scanned, confirm on your phone</string>
+    <string name="bili_load_fail">Couldn’t load</string>
+    <string name="bili_play_fail">Couldn’t play</string>
+    <string name="bili_unsupported">Not supported yet</string>
+    <string name="bili_empty">Nothing here</string>
+    <string name="bili_empty_follow">No new uploads from people you follow</string>
+    <string name="bili_empty_fav">No favorites on this TV yet</string>
+    <string name="bili_search_video">Videos</string>
+    <string name="bili_search_up">Uploaders</string>
+    <string name="bili_space_latest">Latest videos</string>
+    <string name="bili_logout">Log out</string>
+    <string name="bili_close">Close</string>
 
 </resources>

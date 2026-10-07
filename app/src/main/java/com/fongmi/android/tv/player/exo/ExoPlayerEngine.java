@@ -95,7 +95,7 @@ public class ExoPlayerEngine implements PlayerEngine {
     }
 
     private void startInternal(long position) {
-        MediaItem item = MediaItemFactory.from(spec, decode);
+        MediaItem item = MediaItemFactory.from(spec);
         player.setMediaItem(item, position);
         preCache.start(player, item);
         player.prepare();

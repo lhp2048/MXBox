@@ -7,6 +7,7 @@
     <string name="home_keep">收藏</string>
     <string name="home_push">推送</string>
     <string name="home_setting">設定</string>
+    <string name="home_bili">Bilibili</string>
     <string name="home_history">最近觀看</string>
     <string name="home_recommend">更新推薦</string>
 
@@ -16,5 +17,32 @@
     <!-- Push -->
     <string name="push_clip">推送剪貼簿內容</string>
     <string name="push_info">使用手機掃描 QR Code，或於瀏覽器輸入網址\n<xliff:g name="name">%s</xliff:g></string>
+
+    <string name="bili_search_hint">搜尋影片或 UP</string>
+    <string name="bili_search_code">掃碼搜尋</string>
+    <string name="bili_search_history">搜尋歷史</string>
+    <string name="bili_search_suggest">搜尋聯想</string>
+    <string name="bili_search_code_hint">用手機掃描後，把搜尋內容發到電視</string>
+    <string name="bili_setting">設定</string>
+    <string name="bili_tab_recommend">推薦</string>
+    <string name="bili_tab_follow">我的關注</string>
+    <string name="bili_tab_favorite">我的收藏</string>
+    <string name="bili_fav">收藏</string>
+    <string name="bili_unfav">取消收藏</string>
+    <string name="bili_more">更多作品</string>
+    <string name="bili_quality">清晰度</string>
+    <string name="bili_qr">請使用手機嗶哩嗶哩 App 掃碼登入</string>
+    <string name="bili_qr_scanned">已掃碼，請在手機上確認</string>
+    <string name="bili_load_fail">載入失敗</string>
+    <string name="bili_play_fail">播放失敗</string>
+    <string name="bili_unsupported">暫不支持</string>
+    <string name="bili_empty">沒有內容</string>
+    <string name="bili_empty_follow">暫無關注投稿</string>
+    <string name="bili_empty_fav">還沒有收藏</string>
+    <string name="bili_search_video">影片</string>
+    <string name="bili_search_up">博主</string>
+    <string name="bili_space_latest">最新影片</string>
+    <string name="bili_logout">登出</string>
+    <string name="bili_close">關閉</string>
 
 </resources>

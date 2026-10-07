@@ -17,12 +17,12 @@ dependencyResolutionManagement {
     repositories {
         maven { url 'https://maven.aliyun.com/repository/google' }
         maven { url 'https://maven.aliyun.com/repository/central' }
-        maven { url 'https://maven.aliyun.com/repository/public' }
-        maven { url 'https://mirrors.cloud.tencent.com/nexus/repository/maven-public/' }
         maven {
             url 'https://jitpack.io'
             content { includeGroupByRegex 'com\\.github.*' }
         }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://mirrors.cloud.tencent.com/nexus/repository/maven-public/' }
         flatDir { dirs "$rootDir/app/libs" }
     }
 }

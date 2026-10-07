@@ -2,6 +2,7 @@
 
     <!-- App -->
     <string name="app_name">MXBox</string>
+    <string name="mx_feed_saved">已设置源服务器：%1$s</string>
     <string name="mx_source_title">切换配置源</string>
     <string name="mx_source_live_switched">直播源已切换：%1$s</string>
     <string name="mx_source_test">测速诊断</string>

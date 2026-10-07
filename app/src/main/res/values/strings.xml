@@ -2,6 +2,7 @@
 
     <!-- App -->
     <string name="app_name">MXBox</string>
+    <string name="mx_feed_saved">Feed server saved: %1$s</string>
     <string name="mx_source_title">Switch Source</string>
     <string name="mx_source_live_switched">Live source switched: %1$s</string>
     <string name="mx_source_test">Speed Test</string>

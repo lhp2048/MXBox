@@ -4,8 +4,10 @@ import android.text.TextUtils;
 
 import androidx.media3.common.Player;
 import androidx.media3.common.util.Util;
+import androidx.media3.mpvplayer.MpvAndroidOptions;
 import androidx.media3.mpvplayer.MpvPlayer;
 import androidx.media3.mpvplayer.MpvPlayerConfig;
+import androidx.media3.mpvplayer.MpvSubtitleOptions;
 import androidx.media3.ui.SubtitleView;
 
 import com.fongmi.android.tv.App;
@@ -27,12 +29,6 @@ public final class MpvUtil {
     private static final double MAX_SUB_SCALE = 3.0;
     private static final double MIN_SUB_POS = 0.0;
     private static final double MAX_SUB_POS = 150.0;
-    private static final String OPT_GPU_API = "gpu-api";
-    private static final String OPT_GPU_CONTEXT = "gpu-context";
-    private static final String OPT_SUB_LANG = "slang";
-    private static final String VALUE_ANDROID_VK = "androidvk";
-    private static final String VALUE_VULKAN = "vulkan";
-
     public static boolean isAvailable() {
         try {
             return MpvPlayer.isAvailable();
@@ -43,69 +39,58 @@ public final class MpvUtil {
 
     public static MpvPlayer buildPlayer(int decode, Player.Listener listener) {
         MpvPlayer player = new MpvPlayer.Builder(App.get()).setDecode(decode).setConfig(buildConfig()).build();
+        player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setPreferredTextLanguages(LangUtil.getPreferredTextLanguages()).build());
         player.addListener(listener);
         return player;
     }
 
     public static void setSubtitleStyle(MpvPlayer player) {
-        player.setSubtitleOptions(buildSubtitleConfig());
+        player.setSubtitleOptions(buildSubtitleOptions());
     }
 
     private static MpvPlayerConfig buildConfig() {
         MpvPlayerConfig.Builder builder = newConfigBuilder();
         addAndroidOptions(builder);
-        addTrackLanguageOptions(builder);
-        addSubtitleStyleOptions(builder);
-        return builder.build();
-    }
-
-    private static MpvPlayerConfig buildSubtitleConfig() {
-        MpvPlayerConfig.Builder builder = new MpvPlayerConfig.Builder();
         addSubtitleStyleOptions(builder);
         return builder.build();
     }
 
     private static MpvPlayerConfig.Builder newConfigBuilder() {
-        return new MpvPlayerConfig.Builder().setDefaultUserAgent(getDefaultUserAgent()).setHlsHttpPersistent(false);
+        return new MpvPlayerConfig.Builder().setDefaultUserAgent(getDefaultUserAgent());
     }
 
     private static void addAndroidOptions(MpvPlayerConfig.Builder builder) {
         addAndroidDefaultOptions(builder);
         addTlsCaFile(builder);
-        addVideoOutputOptions(builder);
         addPreloadOptions(builder);
     }
 
     private static void addAndroidDefaultOptions(MpvPlayerConfig.Builder builder) {
         File configDir = Path.mpv();
         File cacheDir = Path.mpvCache();
-        builder.addConfigDirectory(configDir).addAndroidFontConfig(configDir, cacheDir).addAndroidDefaults(getVideoOutputDriver(), cacheDir);
+        MpvAndroidOptions options = new MpvAndroidOptions.Builder().setShaderCacheDirectory(cacheDir).setGpuNextEnabled(PlayerSetting.isMpvGpuNext()).setVulkanEnabled(PlayerSetting.isMpvVulkan()).build();
+        builder.addConfigDirectory(configDir).addAndroidFontConfig(configDir, cacheDir).addAndroidDefaults(options);
     }
 
     private static void addTlsCaFile(MpvPlayerConfig.Builder builder) {
         builder.addTlsCaFileFromAsset(App.get(), ASSET_CA_FILE, Path.files(ASSET_CA_FILE));
     }
 
-    private static void addTrackLanguageOptions(MpvPlayerConfig.Builder builder) {
-        builder.addPostInitStringOption(OPT_SUB_LANG, LangUtil.getPreferredTextLanguageList());
-    }
-
-    private static String getVideoOutputDriver() {
-        return PlayerSetting.isMpvGpuNext() ? MpvPlayerConfig.VIDEO_OUTPUT_GPU_NEXT : null;
-    }
-
-    private static void addVideoOutputOptions(MpvPlayerConfig.Builder builder) {
-        if (!PlayerSetting.isMpvVulkan()) return;
-        builder.addPreInitStringOption(OPT_GPU_API, VALUE_VULKAN).addPreInitStringOption(OPT_GPU_CONTEXT, VALUE_ANDROID_VK);
-    }
-
     private static void addPreloadOptions(MpvPlayerConfig.Builder builder) {
         if (!PreloadSetting.isPreload()) return;
-        builder.addDiskCacheOptions(Path.mpvCache(), PreloadSetting.getPreloadTimeSeconds(), PreloadSetting.getPreloadSizeMb());
+        builder.addDiskCacheOptions(Path.mpvCache(), PreloadSetting.getPreloadTimeSeconds());
     }
 
     private static void addSubtitleStyleOptions(MpvPlayerConfig.Builder builder) {
-        builder.addAndroidSubtitleOptions(App.get(), PlayerSetting.isCaption(), getSubtitlePosition(), getSubtitleScale());
+        builder.addAndroidSubtitleOptions(App.get(), buildSubtitleOptions());
+    }
+
+    private static MpvSubtitleOptions buildSubtitleOptions() {
+        MpvSubtitleOptions.Builder builder = new MpvSubtitleOptions.Builder();
+        if (PlayerSetting.isCaption()) builder.setSystemCaptionStyle();
+        if (PlayerSetting.getSubtitlePosition() != 0) builder.setPosition(getSubtitlePosition());
+        if (PlayerSetting.getSubtitleTextSize() != 0) builder.setScale(getSubtitleScale());
+        return builder.build();
     }
 
     private static String getDefaultUserAgent() {

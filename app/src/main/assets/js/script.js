@@ -12,7 +12,17 @@ let danmakuSize = 25;
 let dialogClosing = false;
 
 function search() {
-    doAction('search', { word: $('#keyword').val() });
+    const word = $('#keyword').val().trim();
+    if (!word) return;
+    if (new URLSearchParams(window.location.search).get('target') === 'bili') {
+        $.post('/action', { do: 'bili', word: word }).done(function () {
+            warnToast('已发送到电视');
+        }).fail(function () {
+            warnToast('发送失败');
+        });
+        return;
+    }
+    doAction('search', { word: word });
 }
 
 function push() {
@@ -21,6 +31,16 @@ function push() {
 
 function setting() {
     doAction('setting', { text: $('#setting_text').val(), name: $('#setting_name').val() });
+}
+
+function saveFeed() {
+    const url = $('#feed_server').val().trim();
+    if (!url) return;
+    $.post('/action', { do: 'feed', url: url }).done(function (text) {
+        warnToast(text || '已设置');
+    }).fail(function () {
+        warnToast('设置失败');
+    });
 }
 
 function sendDanmaku() {
@@ -136,14 +156,14 @@ function listFile(path, addHistory = false) {
             info = JSON.parse(res);
         } catch (e) {
             $('#loadingToast').hide();
-            warnToast('回應格式錯誤');
+            warnToast('响应格式错误');
             return;
         }
         const parent = info.parent;
         currentRoot = path;
         currentParent = parent;
         const array = info.files;
-        if (path === '' && array.length === 0) warnToast('可能沒有存儲權限');
+        if (path === '' && array.length === 0) warnToast('可能没有存储权限');
         $('#file_list').html('');
         if (parent !== '.') addFile(buildParentItem());
         array.forEach(node => {
@@ -155,7 +175,7 @@ function listFile(path, addHistory = false) {
     }).fail(function () {
         clearTimeout(loadingTimer);
         $('#loadingToast').hide();
-        warnToast('載入失敗');
+        warnToast('载入失败');
     });
 }
 
@@ -209,13 +229,13 @@ function confirmNewFolder(yes) {
         listFile(currentRoot);
     }).fail(function () {
         $('#loadingToast').hide();
-        warnToast('新增失敗');
+        warnToast('新建失败');
     });
 }
 
 function showDelFolderDialog(path, refreshPath) {
     pendingDelFolder = { path, refreshPath };
-    $('#delFolderContent').text('是否刪除 ' + path);
+    $('#delFolderContent').text('是否删除 ' + path);
     openDialog('delFolder');
 }
 
@@ -230,13 +250,13 @@ function confirmDelFolder(yes) {
         listFile(refreshPath);
     }).fail(function () {
         $('#loadingToast').hide();
-        warnToast('刪除失敗');
+        warnToast('删除失败');
     });
 }
 
 function showDelFileDialog(path) {
     currentFile = path;
-    $('#delFileContent').text('是否刪除 ' + path);
+    $('#delFileContent').text('是否删除 ' + path);
     openDialog('delFile');
 }
 
@@ -249,7 +269,7 @@ function confirmDelFile(yes) {
         listFile(currentRoot);
     }).fail(function () {
         $('#loadingToast').hide();
-        warnToast('刪除失敗');
+        warnToast('删除失败');
     });
 }
 
@@ -271,6 +291,10 @@ function showPanel(id) {
 const tab = parseInt(new URLSearchParams(window.location.search).get('tab')) || 1;
 history.replaceState(null, '');
 showPanel(tab);
+if (new URLSearchParams(window.location.search).get('target') === 'bili') {
+    document.title = 'B站搜索';
+    $('#keyword').attr('placeholder', '请输入 B站 搜索内容');
+}
 
 window.addEventListener('popstate', function () {
     if (dialogClosing) { dialogClosing = false; return; }
@@ -284,5 +308,6 @@ $(function () {
     $('#push_url').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); push(); } });
     $('#danmaku_text').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); sendDanmaku(); } });
     $('#setting_name, #setting_text').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); setting(); } });
+    $('#feed_server').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); saveFeed(); } });
     $('#newFolderContent').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); confirmNewFolder(1); } });
 });

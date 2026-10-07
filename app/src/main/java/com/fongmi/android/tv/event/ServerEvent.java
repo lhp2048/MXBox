@@ -8,6 +8,10 @@ public record ServerEvent(Type type, String text, String name) {
         EventBus.getDefault().post(new ServerEvent(Type.SEARCH, text));
     }
 
+    public static void bili(String text) {
+        EventBus.getDefault().post(new ServerEvent(Type.BILI, text));
+    }
+
     public static void push(String text) {
         EventBus.getDefault().post(new ServerEvent(Type.PUSH, text));
     }
@@ -25,6 +29,6 @@ public record ServerEvent(Type type, String text, String name) {
     }
 
     public enum Type {
-        SEARCH, PUSH, SETTING
+        SEARCH, PUSH, SETTING, BILI
     }
 }

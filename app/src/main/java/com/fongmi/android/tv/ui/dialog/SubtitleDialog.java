@@ -74,27 +74,36 @@ public final class SubtitleDialog extends BaseBottomSheetDialog {
     }
 
     private void onUp(View view) {
-        subtitleView.addPosition(0.005f);
-        PlayerSetting.putSubtitlePosition(subtitleView.getPosition());
+        float position = PlayerSetting.getSubtitlePosition() + 0.005f;
+        subtitleView.setBottomPosition(position);
+        PlayerSetting.putSubtitlePosition(position);
         applySubtitleStyle();
     }
 
     private void onDown(View view) {
-        subtitleView.subPosition(0.005f);
-        PlayerSetting.putSubtitlePosition(subtitleView.getPosition());
+        float position = PlayerSetting.getSubtitlePosition() - 0.005f;
+        subtitleView.setBottomPosition(position);
+        PlayerSetting.putSubtitlePosition(position);
         applySubtitleStyle();
     }
 
     private void onLarge(View view) {
-        subtitleView.addTextSize(0.002f);
-        PlayerSetting.putSubtitleTextSize(subtitleView.getTextSize());
+        float textSize = currentTextSize() + 0.002f;
+        subtitleView.setFractionalTextSize(textSize);
+        PlayerSetting.putSubtitleTextSize(textSize);
         applySubtitleStyle();
     }
 
     private void onSmall(View view) {
-        subtitleView.subTextSize(0.002f);
-        PlayerSetting.putSubtitleTextSize(subtitleView.getTextSize());
+        float textSize = currentTextSize() - 0.002f;
+        subtitleView.setFractionalTextSize(textSize);
+        PlayerSetting.putSubtitleTextSize(textSize);
         applySubtitleStyle();
+    }
+
+    private float currentTextSize() {
+        float textSize = PlayerSetting.getSubtitleTextSize();
+        return textSize == 0 ? SubtitleView.DEFAULT_TEXT_SIZE_FRACTION : textSize;
     }
 
     private void onReset(View view) {

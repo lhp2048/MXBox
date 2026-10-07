@@ -4,6 +4,8 @@ import android.text.TextUtils;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Constant;
+import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.api.config.MxBoxFeedEndpoint;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Device;
@@ -42,6 +44,7 @@ public class Action implements Process {
     public Response doResponse(IHTTPSession session, String url, Map<String, String> files) {
         Map<String, String> params = session.getParms();
         String param = params.get("do");
+        if ("feed".equals(param)) return onFeed(params);
         if (!TextUtils.isEmpty(param)) doJob(param, params);
         return Nano.ok();
     }
@@ -53,11 +56,19 @@ public class Action implements Process {
             case "cast" -> onCast(params);
             case "sync" -> onSync(params);
             case "search" -> onSearch(params);
+            case "bili" -> onBili(params);
             case "setting" -> onSetting(params);
             case "refresh" -> onRefresh(params);
             case "control" -> onControl(params);
             case "danmaku" -> onDanmaku(params);
         }
+    }
+
+    private Response onFeed(Map<String, String> params) {
+        String resolved = MxBoxFeedEndpoint.save(params.get("url"));
+        if (TextUtils.isEmpty(resolved)) return Nano.error("invalid feed");
+        App.post(() -> Notify.show(App.get().getString(R.string.mx_feed_saved, resolved)));
+        return Nano.ok(resolved);
     }
 
     private void onFile(Map<String, String> params) {
@@ -78,6 +89,12 @@ public class Action implements Process {
         String word = params.get("word");
         if (TextUtils.isEmpty(word)) return;
         ServerEvent.search(word);
+    }
+
+    private void onBili(Map<String, String> params) {
+        String word = params.get("word");
+        if (TextUtils.isEmpty(word)) return;
+        ServerEvent.bili(word);
     }
 
     private void onSetting(Map<String, String> params) {

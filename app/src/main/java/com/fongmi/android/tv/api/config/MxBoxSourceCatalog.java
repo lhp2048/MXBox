@@ -234,6 +234,8 @@ public final class MxBoxSourceCatalog {
     }
 
     private static List<SourceEntry> getRemoteFeeds() {
+        String custom = MxBoxFeedEndpoint.get();
+        if (!TextUtils.isEmpty(custom)) return List.of(SourceEntry.remoteFeed(custom));
         List<SourceEntry> items = new ArrayList<>();
         for (SourceEntry source : getBuiltIn()) {
             if (source.isRemoteFeed()) items.add(source);
