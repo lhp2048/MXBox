@@ -49,33 +49,29 @@
                 android:textColorHint="#99FFFFFF"
                 android:textSize="16sp" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/searchCode"
-                android:layout_width="wrap_content"
+                android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:layout_marginStart="12dp"
-                android:background="@drawable/selector_item"
+                android:background="@drawable/bili_icon_button"
+                android:contentDescription="@string/bili_search_code"
                 android:focusable="true"
-                android:gravity="center"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:text="@string/bili_search_code"
-                android:textColor="@color/white"
-                android:textSize="16sp" />
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_bili_qr" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/setting"
-                android:layout_width="wrap_content"
+                android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:layout_marginStart="12dp"
-                android:background="@drawable/selector_item"
+                android:background="@drawable/bili_icon_button"
+                android:contentDescription="@string/bili_setting"
                 android:focusable="true"
-                android:gravity="center"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:text="@string/bili_setting"
-                android:textColor="@color/white"
-                android:textSize="16sp" />
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_bili_setting" />
         </LinearLayout>
 
         <LinearLayout
@@ -520,18 +516,16 @@
                 android:layout_height="1dp"
                 android:layout_weight="1" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/searchPanelCode"
-                android:layout_width="wrap_content"
+                android:layout_width="36dp"
                 android:layout_height="36dp"
-                android:background="@drawable/selector_item"
+                android:background="@drawable/bili_icon_button"
+                android:contentDescription="@string/bili_search_code"
                 android:focusable="true"
-                android:gravity="center"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:text="@string/bili_search_code"
-                android:textColor="@color/white"
-                android:textSize="16sp" />
+                android:padding="6dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_bili_qr" />
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
