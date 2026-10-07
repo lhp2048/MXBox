@@ -31,6 +31,8 @@
     <string name="bili_unfav">Unfavorite</string>
     <string name="bili_more">More videos</string>
     <string name="bili_quality">Quality</string>
+    <string name="bili_playing">Playing</string>
+    <string name="bili_paused">Paused</string>
     <string name="bili_qr">Scan with the Bilibili app to sign in</string>
     <string name="bili_qr_scanned">Scanned, confirm on your phone</string>
     <string name="bili_load_fail">Couldn’t load</string>

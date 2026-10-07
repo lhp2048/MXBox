@@ -51,7 +51,7 @@ public class BiliUpAdapter extends RecyclerView.Adapter<BiliUpAdapter.Holder> {
     @NonNull
     @Override
     public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_bili_row, parent, false);
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_bili_card, parent, false);
         return new Holder(view);
     }
 

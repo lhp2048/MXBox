@@ -46,6 +46,14 @@ public class BiliPlayback {
         player.play();
     }
 
+    public void pause() {
+        player.pause();
+    }
+
+    public void resume() {
+        if (player.getPlaybackState() != Player.STATE_IDLE) player.play();
+    }
+
     public void seekBy(long deltaMs) {
         long duration = player.getDuration();
         long target = Math.max(0, player.getCurrentPosition() + deltaMs);

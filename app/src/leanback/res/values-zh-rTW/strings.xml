@@ -31,6 +31,8 @@
     <string name="bili_unfav">取消收藏</string>
     <string name="bili_more">更多作品</string>
     <string name="bili_quality">清晰度</string>
+    <string name="bili_playing">播放中</string>
+    <string name="bili_paused">已暫停</string>
     <string name="bili_qr">請使用手機嗶哩嗶哩 App 掃碼登入</string>
     <string name="bili_qr_scanned">已掃碼，請在手機上確認</string>
     <string name="bili_load_fail">載入失敗</string>
