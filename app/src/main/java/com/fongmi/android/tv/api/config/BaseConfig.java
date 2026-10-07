@@ -158,9 +158,10 @@ abstract class BaseConfig {
     }
 
     protected String fetchConfigJson(Config config) throws Exception {
-        if (!forceNetwork && ConfigCache.isValid(config)) return config.getJson();
+        if (!forceNetwork && !TextUtils.isEmpty(config.getJson())) return config.getJson();
         String json = Decoder.getJson(UrlUtil.convert(config.getUrl()), getTag());
         config.setJson(json);
+        config.save();
         return json;
     }
 

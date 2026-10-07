@@ -121,7 +121,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     protected void initView(Bundle savedInstanceState) {
         mResult = Result.empty();
         mClock = Clock.create(mBinding.clock);
-        showProgress();
         PermissionUtil.requestNotify(this);
         setRecyclerView();
         setViewModel();
@@ -274,7 +273,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             mResult = Result.empty();
             if (hasItem) mAdapter.removeItems(index, mAdapter.size() - index);
             if (gone) mAdapter.add("progress");
-            showProgress();
         }
         ConfigLoadEvent.homeContent();
         mViewModel.homeContent();

@@ -4,6 +4,7 @@ import android.content.Context;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.utils.Download;
+import com.fongmi.android.tv.utils.Task;
 import com.fongmi.android.tv.utils.UrlUtil;
 import com.github.catvod.crawler.Spider;
 import com.github.catvod.crawler.SpiderNull;
@@ -77,6 +78,23 @@ public class JarLoader {
         this.recent = recent;
     }
 
+    private void verifyJarLater(String key, String jar, String md5Url) {
+        Task.submit(() -> {
+            try {
+                String md5 = OkHttp.string(md5Url).trim();
+                if (md5.isEmpty() || Util.equals(jar, md5)) return;
+                Object lock = locks.computeIfAbsent(key, k -> new Object());
+                synchronized (lock) {
+                    loaders.remove(key);
+                    spiders.keySet().removeIf(spKey -> spKey.startsWith(key));
+                    load(key, Download.create(jar, Path.jar(jar)).get());
+                }
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
     private boolean load(String key, File file) {
         if (Thread.interrupted()) return false;
         if (!Path.exists(file)) return false;
@@ -145,8 +163,16 @@ public class JarLoader {
             if (loaders.containsKey(key)) return true;
             String[] texts = jar.split(";md5;");
             String md5 = texts.length > 1 ? texts[1].trim() : "";
-            if (md5.startsWith("http")) md5 = OkHttp.string(md5).trim();
             jar = texts[0];
+            if (jar.startsWith("http")) {
+                File file = Path.jar(jar);
+                if (file.exists()) {
+                    boolean loaded = load(key, file);
+                    if (loaded && md5.startsWith("http")) verifyJarLater(key, jar, md5);
+                    if (loaded) return true;
+                }
+            }
+            if (md5.startsWith("http")) md5 = OkHttp.string(md5).trim();
             if (!md5.isEmpty() && Util.equals(jar, md5)) {
                 return load(key, Path.jar(jar));
             } else if (jar.startsWith("http")) {
