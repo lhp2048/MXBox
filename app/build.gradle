@@ -69,10 +69,12 @@ android {
         release {
             minifyEnabled = true
             shrinkResources = true
-            if (signingConfigs.release.storeFile != null) {
-                signingConfig = signingConfigs.release
-            }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'proguard-rules-media.pro'
+            if (signingConfigs.release.storeFile != null) {
+                signingConfig signingConfigs.release
+            } else {
+                signingConfig signingConfigs.debug
+            }
         }
     }
 

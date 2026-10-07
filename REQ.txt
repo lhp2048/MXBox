@@ -8,42 +8,51 @@ http://192.168.2.11:18026/api/v1/tvbox/feed.json
 { 
   "urls": [
     {
-      "name": "月光宝盒多仓",
-      "url": "https://jihulab.com/ygbh1/box/-/raw/main/dcang/dc2.json"
+      "name": "饭太硬",
+      "url": "http://fty.xxooo.cf/tv"
     },
     {
-      "name": "月光宝盒单仓",
-      "url": "https://jihulab.com/ygbh1/box/-/raw/main/ys.json"
+      "name": "高天流云",
+      "url": "https://fastly.jsdelivr.net/gh/gaotianliuyun/gao@master/0827.json"
+    },
+    {
+      "name": "其人之道",
+      "url": "https://fastly.jsdelivr.net/gh/qirenzhidao/tvbox18@main/app.json"
     },
     {
       "name": "王二小放牛娃",
       "url": "https://9280.kstore.vip/newwex.json"
     },
     {
+      "name": "小盒子单仓",
+      "url": "http://xhztv.top/xhz"
+    },
+    {
+      "name": "月光宝盒单仓",
+      "url": "https://jihulab.com/ygbh1/box/-/raw/main/ys.json"
+    },
+    {
       "name": "俊于",
       "url": "http://home.jundie.top:81/top98.json"
     },
     {
-      "name": "小盒子",
-      "url": "http://xhztv.top/xhz"
-    },
-    {
       "name": "小盒子4K",
       "url": "http://xhztv.top/4k.json"
-    },
-    {
-      "name": "匿名多仓",
-      "url": "https://12586.kstore.space/123.json"
     }
   ],
   "lives": [
     {
-      "group": "家庭播放列表",
+      "group": "全部下载",
       "channels": [
         {
           "name": "全部下载",
           "url": "http://192.168.2.11:18026/api/v1/playlists/1/live.m3u"
-        },
+        }
+      ]
+    },
+    {
+      "group": "英语",
+      "channels": [
         {
           "name": "英语",
           "url": "http://192.168.2.11:18026/api/v1/playlists/2/live.m3u"
