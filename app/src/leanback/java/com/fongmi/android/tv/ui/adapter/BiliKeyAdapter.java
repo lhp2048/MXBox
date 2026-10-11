@@ -20,6 +20,7 @@ public class BiliKeyAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     public static final int CLEAR = R.drawable.ic_keyboard_clear;
     public static final int BACKSPACE = R.drawable.ic_keyboard_back;
     public static final int SEARCH = R.drawable.ic_keyboard_search;
+    public static final int CODE = R.drawable.ic_bili_qr;
 
     private final List<Object> items = new ArrayList<>();
     private final Listener listener;
@@ -29,6 +30,7 @@ public class BiliKeyAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         items.add(CLEAR);
         items.add(BACKSPACE);
         items.add(SEARCH);
+        items.add(CODE);
         items.addAll(Arrays.asList("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"));
     }
 
@@ -38,6 +40,8 @@ public class BiliKeyAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         void onBackspace();
 
         void onSearchKey();
+
+        void onCode();
     }
 
     @Override
@@ -94,6 +98,7 @@ public class BiliKeyAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
             int icon = (int) items.get(getBindingAdapterPosition());
             if (icon == CLEAR) listener.onText("");
             else if (icon == BACKSPACE) listener.onBackspace();
+            else if (icon == CODE) listener.onCode();
             else listener.onSearchKey();
         }
 

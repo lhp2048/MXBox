@@ -279,6 +279,74 @@ html, body {
 .md-nav-item.active .md-nav-icon      { fill: var(--md-on-secondary-container); }
 .md-nav-item.active .md-nav-label     { color: var(--md-on-surface); font-weight: 700; }
 
+.md-nav-slot {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.md-nav-slot .md-nav-item { width: 100%; }
+
+.md-nav-more {
+    margin-top: 4px;
+    width: 28px;
+    height: 16px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: var(--md-secondary-container);
+    color: var(--md-on-secondary-container);
+    font-size: 9px;
+    line-height: 16px;
+    cursor: pointer;
+}
+
+.md-more-menu {
+    display: none;
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 10px);
+    z-index: 30;
+    transform: translateX(-50%);
+    min-width: 132px;
+    overflow: hidden;
+    border-radius: 12px;
+    background: var(--md-surface-container-high);
+    box-shadow: 0 8px 24px var(--md-shadow);
+}
+
+.md-more-menu.open { display: block; }
+
+.md-more-item {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    border: none;
+    background: transparent;
+    color: var(--md-on-surface);
+    font-size: 15px;
+    text-align: center;
+}
+
+.md-more-item.current { font-weight: 700; background: var(--md-secondary-container); }
+
+.md-switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 48px;
+    font-size: 16px;
+    color: var(--md-on-surface);
+}
+
+.md-switch {
+    width: 48px;
+    height: 28px;
+    accent-color: var(--md-primary);
+}
+
 /* ══ M3 Dialog ══ */
 .md-dialog-overlay {
     display: none;

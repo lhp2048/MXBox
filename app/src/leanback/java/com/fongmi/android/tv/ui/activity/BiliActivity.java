@@ -10,6 +10,7 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.view.inputmethod.EditorInfo;
@@ -32,9 +33,11 @@ import com.fongmi.android.tv.bili.BiliFavoriteStore;
 import com.fongmi.android.tv.bili.BiliPlayback;
 import com.fongmi.android.tv.bili.BiliQn;
 import com.fongmi.android.tv.bili.BiliQr;
+import com.fongmi.android.tv.bili.BiliRecommendMemory;
 import com.fongmi.android.tv.bili.BiliSearchResult;
 import com.fongmi.android.tv.bili.BiliSession;
 import com.fongmi.android.tv.bili.BiliStreams;
+import com.fongmi.android.tv.bili.BiliTitleFilter;
 import com.fongmi.android.tv.bili.BiliUp;
 import com.fongmi.android.tv.bili.BiliUpStore;
 import com.fongmi.android.tv.bili.BiliVideo;
@@ -319,7 +322,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     }
 
     private void openRemembered() {
-        if (memoryReady) openChannel(memoryChannel, memoryIndex, true);
+        if (memoryReady) openChannel(memoryChannel, memoryChannel == RECOMMEND ? 0 : memoryIndex, true);
         else openChannel(RECOMMEND, 0, true);
     }
 
@@ -427,6 +430,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
             selectAppended = false;
         }
         addQueue(result.getItems());
+        if (!append && kind == KIND_RECOMMEND) pinLastRecommend();
         boolean landed = false;
         if (selectAppended) {
             selectAppended = false;
@@ -458,7 +462,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
 
     private void addQueue(List<BiliVideo> items) {
         for (BiliVideo video : items) {
-            if (kind == KIND_RECOMMEND && hasBvid(video.getBvid())) continue;
+            if (kind == KIND_RECOMMEND && (hasBvid(video.getBvid()) || BiliTitleFilter.blocked(video.getTitle()))) continue;
             queue.add(video);
         }
     }
@@ -466,6 +470,18 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     private boolean hasBvid(String bvid) {
         for (BiliVideo video : queue) if (video.getBvid().equals(bvid)) return true;
         return false;
+    }
+
+    private void pinLastRecommend() {
+        BiliVideo last = BiliRecommendMemory.get();
+        if (last == null || BiliTitleFilter.blocked(last.getTitle())) return;
+        for (int i = 0; i < queue.size(); i++) {
+            if (!last.getBvid().equals(queue.get(i).getBvid())) continue;
+            if (i == 0) return;
+            queue.add(0, queue.remove(i));
+            return;
+        }
+        queue.add(0, last);
     }
 
     private void failLoad(int token, IOException e) {
@@ -554,6 +570,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         playingKind = kind;
         playingIndex = target;
         playingVideo = queue.get(target);
+        if (kind == KIND_RECOMMEND) BiliRecommendMemory.save(playingVideo);
         if (followHighlight) {
             index = target;
             if (kind == KIND_RECOMMEND) recommendIndex = index;
@@ -927,7 +944,12 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onServerEvent(ServerEvent event) {
-        if (event.type() != ServerEvent.Type.BILI || isFinishing()) return;
+        if (isFinishing()) return;
+        if (event.type() == ServerEvent.Type.BILI_FILTER) {
+            applyTitleFilter();
+            return;
+        }
+        if (event.type() != ServerEvent.Type.BILI) return;
         String word = event.text() == null ? "" : event.text().trim();
         if (word.isEmpty()) return;
         searchQuery = word;
@@ -940,6 +962,21 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         hide(binding.gridPanel);
         openBiliSearch();
         submitSearch();
+    }
+
+    private void applyTitleFilter() {
+        recommendLoaded = false;
+        recommendCache.clear();
+        if (channel == RECOMMEND && kind == KIND_RECOMMEND) {
+            page = 1;
+            offset = "";
+            index = 0;
+            pendingIndex = 0;
+            loading = false;
+            queue.clear();
+            loadQueue(false, false);
+        }
+        if (isVisible(binding.searchPanel) && !keyword.isEmpty()) loadSearch(false);
     }
 
     private void openBiliSearch() {
@@ -1137,6 +1174,11 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     }
 
     @Override
+    public void onCode() {
+        showSearchQr();
+    }
+
+    @Override
     public void onClick(String text) {
         searchQuery = text;
         paintQuery();
@@ -1157,13 +1199,16 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
                         searchVideos.clear();
                         searchUps.clear();
                     }
-                    searchVideos.addAll(result.getVideos());
+                    int videoBefore = searchVideos.size();
+                    int upBefore = searchUps.size();
+                    for (BiliVideo video : result.getVideos()) {
+                        if (BiliTitleFilter.blocked(video.getTitle())) continue;
+                        searchVideos.add(video);
+                    }
                     searchUps.addAll(result.getUps());
                     searchVideoMore = result.hasVideoMore();
                     searchUpMore = result.hasUpMore();
                     searchPage = result.getNextPage();
-                    int videoBefore = append ? searchVideos.size() - result.getVideos().size() : 0;
-                    int upBefore = append ? searchUps.size() - result.getUps().size() : 0;
                     searchVideoAdapter.setItems(searchVideos);
                     searchUpAdapter.setItems(searchUps);
                     boolean jump = searchSelectAppended;
@@ -1617,8 +1662,15 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     }
 
     @Override
+    public void onIsPlayingChanged(boolean isPlaying) {
+        if (closing || isFinishing()) return;
+        keepScreenOn(isPlaying || playback.player().getPlaybackState() == Player.STATE_BUFFERING);
+    }
+
+    @Override
     public void onPlaybackStateChanged(int state) {
         if (closing || isFinishing()) return;
+        keepScreenOn(playback.player().isPlaying() || state == Player.STATE_BUFFERING);
         Log.i(BiliPlayback.TAG, "state=" + state);
         if (state == Player.STATE_READY) playbackReady = true;
         if (state != Player.STATE_ENDED || playingToken != playToken || previewing) return;
@@ -1828,9 +1880,15 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         super.onDestroy();
     }
 
+    private void keepScreenOn(boolean on) {
+        if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    }
+
     private void detachPlayback() {
         if (closing) return;
         closing = true;
+        keepScreenOn(false);
         handler.removeCallbacksAndMessages(null);
         if (playback != null) playback.player().removeListener(this);
     }

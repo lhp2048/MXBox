@@ -86,6 +86,8 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private ActivityHomeBinding mBinding;
     private ArrayObjectAdapter mHistoryAdapter;
     private ArrayObjectAdapter mFuncAdapter;
+    private boolean homeFocused;
+    private int homeFocusTries;
     private ArrayObjectAdapter mAdapter;
     private HistoryPresenter mPresenter;
     private SiteViewModel mViewModel;
@@ -256,7 +258,35 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private void setFocus() {
         mBinding.title.setSelected(true);
         App.post(() -> mBinding.title.setFocusable(true), 500);
-        if (!mBinding.title.hasFocus()) mBinding.recycler.requestFocus();
+        if (homeFocused) {
+            if (!mBinding.title.hasFocus()) mBinding.recycler.requestFocus();
+        } else {
+            focusHomeButton();
+        }
+    }
+
+    private void focusHomeButton() {
+        if (homeFocused || isFinishing()) return;
+        mBinding.recycler.setSelectedPosition(0);
+        mBinding.recycler.post(() -> {
+            if (homeFocused || isFinishing()) return;
+            RecyclerView.LayoutManager rows = mBinding.recycler.getLayoutManager();
+            View row = rows == null ? null : rows.findViewByPosition(0);
+            View content = row == null ? null : row.findViewById(androidx.leanback.R.id.row_content);
+            if (!(content instanceof HorizontalGridView)) {
+                if (homeFocusTries++ < 8) mBinding.recycler.post(this::focusHomeButton);
+                return;
+            }
+            HorizontalGridView grid = (HorizontalGridView) content;
+            grid.setSelectedPosition(0);
+            grid.post(() -> {
+                if (homeFocused || isFinishing()) return;
+                RecyclerView.LayoutManager buttons = grid.getLayoutManager();
+                View child = buttons == null ? null : buttons.findViewByPosition(0);
+                if (child != null && child.requestFocus()) homeFocused = true;
+                else if (homeFocusTries++ < 8) grid.post(this::focusHomeButton);
+            });
+        });
     }
 
     private void getVideo() {
@@ -297,9 +327,9 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     private void setFunc() {
         List<Func> items = new ArrayList<>();
+        items.add(Func.create(R.string.home_bili));
         items.add(Func.create(R.string.home_vod));
         if (LiveConfig.hasUrl()) items.add(Func.create(R.string.home_live));
-        items.add(Func.create(R.string.home_bili));
         items.add(Func.create(R.string.home_search));
         items.add(Func.create(R.string.home_keep));
         items.add(Func.create(R.string.home_push));

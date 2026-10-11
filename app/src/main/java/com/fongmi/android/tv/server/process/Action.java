@@ -12,6 +12,7 @@ import com.fongmi.android.tv.bean.Device;
 import com.fongmi.android.tv.bean.History;
 import com.fongmi.android.tv.bean.Keep;
 import com.fongmi.android.tv.bean.Vod;
+import com.fongmi.android.tv.bili.BiliTitleFilter;
 import com.fongmi.android.tv.event.CastEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.event.ServerEvent;
@@ -45,6 +46,7 @@ public class Action implements Process {
         Map<String, String> params = session.getParms();
         String param = params.get("do");
         if ("feed".equals(param)) return onFeed(params);
+        if ("biliFilter".equals(param)) return onBiliFilter(params);
         if (!TextUtils.isEmpty(param)) doJob(param, params);
         return Nano.ok();
     }
@@ -95,6 +97,20 @@ public class Action implements Process {
         String word = params.get("word");
         if (TextUtils.isEmpty(word)) return;
         ServerEvent.bili(word);
+    }
+
+    private Response onBiliFilter(Map<String, String> params) {
+        boolean changed = false;
+        if (params.containsKey("enabled")) {
+            BiliTitleFilter.enabled("1".equals(params.get("enabled")) || "true".equals(params.get("enabled")));
+            changed = true;
+        }
+        if (params.containsKey("words")) {
+            BiliTitleFilter.words(params.get("words"));
+            changed = true;
+        }
+        if (changed) ServerEvent.biliFilter();
+        return Nano.ok(BiliTitleFilter.json());
     }
 
     private void onSetting(Map<String, String> params) {

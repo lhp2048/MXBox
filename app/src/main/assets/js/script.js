@@ -281,12 +281,82 @@ function warnToast(msg) {
 }
 
 function showPanel(id) {
-    for (let i = 1; i <= 5; i++) {
-        document.getElementById('panel' + i).classList.toggle('active', i === id);
-        document.getElementById('tab' + i).classList.toggle('active', i === id);
+    if (MIDDLE[id]) {
+        middlePanel = id;
+        $('#midLabel').text(MIDDLE[id].label);
+        $('#midIconPath').attr('d', MIDDLE[id].icon);
     }
+    for (let i = 1; i <= 6; i++) {
+        const panel = document.getElementById('panel' + i);
+        if (panel) panel.classList.toggle('active', i === id);
+    }
+    document.getElementById('tab1').classList.toggle('active', id === 1);
+    document.getElementById('tabMid').classList.toggle('active', id === middlePanel);
+    document.getElementById('tab4').classList.toggle('active', id === 4);
+    $('.md-more-item').removeClass('current');
+    $('.md-more-item[data-panel="' + middlePanel + '"]').addClass('current');
+    closeMore();
     if (id === 5 && document.getElementById('file_list').innerHTML === '') listFile('');
+    if (id === 6) loadBiliFilter();
 }
+
+function showMiddle() {
+    showPanel(middlePanel);
+}
+
+function toggleMore(event) {
+    event.stopPropagation();
+    $('#moreMenu').toggleClass('open');
+}
+
+function closeMore() {
+    $('#moreMenu').removeClass('open');
+}
+
+function pickMiddle(id) {
+    showPanel(id);
+}
+
+let biliFilterSnapshot = '';
+
+function loadBiliFilter() {
+    $.get('/action', { do: 'biliFilter' }, function (text) {
+        try {
+            const data = JSON.parse(text);
+            $('#bili_filter_on').prop('checked', !!data.enabled);
+            $('#bili_filter_words').val(data.words || '');
+            biliFilterSnapshot = biliFilterState();
+        } catch (e) {
+        }
+    });
+}
+
+function biliFilterState() {
+    return ($('#bili_filter_on').is(':checked') ? '1' : '0') + '\n' + $('#bili_filter_words').val();
+}
+
+function saveBiliFilter() {
+    const next = biliFilterState();
+    if (next === biliFilterSnapshot) return;
+    biliFilterSnapshot = next;
+    $.post('/action', {
+        do: 'biliFilter',
+        enabled: next.startsWith('1') ? '1' : '0',
+        words: $('#bili_filter_words').val()
+    }).done(function () {
+        warnToast('已保存');
+    }).fail(function () {
+        warnToast('保存失败');
+    });
+}
+
+const MIDDLE = {
+    2: { label: '推送', icon: 'M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3zM8 13h2.55v3h2.9v-3H16l-4-4z' },
+    3: { label: '弹幕', icon: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z' },
+    5: { label: '本地', icon: 'M9.17 6l2 2H20v10H4V6h5.17M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z' },
+    6: { label: 'Bilibili', icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z' }
+};
+let middlePanel = 2;
 
 const tab = parseInt(new URLSearchParams(window.location.search).get('tab')) || 1;
 history.replaceState(null, '');
@@ -310,4 +380,8 @@ $(function () {
     $('#setting_name, #setting_text').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); setting(); } });
     $('#feed_server').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); saveFeed(); } });
     $('#newFolderContent').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); confirmNewFolder(1); } });
+    $('#bili_filter_on').on('change', saveBiliFilter);
+    $('#bili_filter_words').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); } });
+    $('#bili_filter_words').on('blur', saveBiliFilter);
+    $(document).on('click', function () { closeMore(); });
 });
