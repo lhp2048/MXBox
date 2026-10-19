@@ -81,6 +81,18 @@ html, body {
 .tab-panel { display: none; }
 .tab-panel.active { display: flex; flex-direction: column; justify-content: center; min-height: 100%; padding: 20px 16px; }
 #panel5.tab-panel.active { display: block; justify-content: unset; padding: 16px; }
+#panel4.tab-panel.active, #panel7.tab-panel.active { display: block; min-height: 0; justify-content: flex-start; }
+.curtain-hidden { display: none !important; }
+.curtain-block { display: flex; flex-direction: column; gap: 8px; }
+.curtain-title { font-size: 13px; font-weight: 700; color: var(--md-on-surface-variant); }
+.curtain-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.curtain-row .md-input { flex: 1; min-width: 72px; }
+.curtain-swatch { width: 28px; height: 28px; border: none; border-radius: 14px; padding: 0; }
+.curtain-list { display: flex; flex-direction: column; gap: 6px; }
+.curtain-track { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px; }
+.curtain-check { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.curtain-push img { width: 42px; height: 42px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+.curtain-push span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .panel-content { display: flex; flex-direction: column; gap: 20px; width: 100%; }
 
 #file_uploader { display: none; }

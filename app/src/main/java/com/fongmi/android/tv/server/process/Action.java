@@ -14,8 +14,10 @@ import com.fongmi.android.tv.bean.Keep;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.bili.BiliTitleFilter;
 import com.fongmi.android.tv.event.CastEvent;
+import com.fongmi.android.tv.ui.custom.GlobalDanmaku;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.event.ServerEvent;
+import com.fongmi.android.tv.home.HomeButtons;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.server.Nano;
 import com.fongmi.android.tv.server.Server;
@@ -47,6 +49,7 @@ public class Action implements Process {
         String param = params.get("do");
         if ("feed".equals(param)) return onFeed(params);
         if ("biliFilter".equals(param)) return onBiliFilter(params);
+        if ("homeButtons".equals(param)) return onHomeButtons(params);
         if (!TextUtils.isEmpty(param)) doJob(param, params);
         return Nano.ok();
     }
@@ -113,6 +116,14 @@ public class Action implements Process {
         return Nano.ok(BiliTitleFilter.json());
     }
 
+    private Response onHomeButtons(Map<String, String> params) {
+        if (params.containsKey("order") || params.containsKey("hidden")) {
+            HomeButtons.save(params.get("order"), params.get("hidden"));
+            ServerEvent.homeButtons();
+        }
+        return Nano.ok(HomeButtons.json());
+    }
+
     private void onSetting(Map<String, String> params) {
         String text = params.get("text");
         String name = params.get("name");
@@ -153,9 +164,8 @@ public class Action implements Process {
 
     private void onDanmaku(Map<String, String> params) {
         String text = params.get("text");
-        PlaybackService service = Server.get().getService();
-        if (service == null || TextUtils.isEmpty(text)) return;
-        App.post(() -> service.player().sendDanmaku(text));
+        if (TextUtils.isEmpty(text)) return;
+        App.post(() -> GlobalDanmaku.show(text));
     }
 
     private void onCast(Map<String, String> params) {

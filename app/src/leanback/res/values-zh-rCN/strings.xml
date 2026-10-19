@@ -8,6 +8,8 @@
     <string name="home_push">推送</string>
     <string name="home_setting">设置</string>
     <string name="home_bili">Bilibili</string>
+    <string name="home_curtain">幕布</string>
+    <string name="curtain_scan">手机请连同一个 Wi-Fi</string>
     <string name="home_history">最近观看</string>
     <string name="home_recommend">更新推荐</string>
 

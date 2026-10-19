@@ -8,6 +8,8 @@
     <string name="home_push">Push</string>
     <string name="home_setting">Setting</string>
     <string name="home_bili">Bilibili</string>
+    <string name="home_curtain">Curtain</string>
+    <string name="curtain_scan">Connect the phone to the same Wi-Fi</string>
     <string name="home_history">History</string>
     <string name="home_recommend">Recommend</string>
 

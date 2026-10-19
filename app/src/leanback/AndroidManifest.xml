@@ -130,6 +130,11 @@
             android:screenOrientation="sensorLandscape" />
 
         <activity
+            android:name=".ui.activity.CurtainActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
             android:name=".ui.activity.BiliActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:screenOrientation="sensorLandscape"

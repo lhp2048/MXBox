@@ -44,6 +44,7 @@ import com.fongmi.android.tv.event.ConfigLoadEvent;
 import com.fongmi.android.tv.event.DepotLoadEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.event.ServerEvent;
+import com.fongmi.android.tv.home.HomeButtons;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.impl.ConfigListener;
 import com.fongmi.android.tv.model.SiteViewModel;
@@ -327,14 +328,25 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     private void setFunc() {
         List<Func> items = new ArrayList<>();
-        items.add(Func.create(R.string.home_bili));
-        items.add(Func.create(R.string.home_vod));
-        if (LiveConfig.hasUrl()) items.add(Func.create(R.string.home_live));
-        items.add(Func.create(R.string.home_search));
-        items.add(Func.create(R.string.home_keep));
-        items.add(Func.create(R.string.home_push));
-        items.add(Func.create(R.string.home_setting));
+        for (String key : HomeButtons.order()) {
+            if (HomeButtons.hidden(key)) continue;
+            if ("live".equals(key) && !LiveConfig.hasUrl()) continue;
+            int resId = homeRes(key);
+            if (resId != 0) items.add(Func.create(resId));
+        }
         mFuncAdapter.setItems(items, new BaseDiffCallback<Func>());
+    }
+
+    private int homeRes(String key) {
+        if ("bili".equals(key)) return R.string.home_bili;
+        if ("curtain".equals(key)) return R.string.home_curtain;
+        if ("vod".equals(key)) return R.string.home_vod;
+        if ("live".equals(key)) return R.string.home_live;
+        if ("search".equals(key)) return R.string.home_search;
+        if ("keep".equals(key)) return R.string.home_keep;
+        if ("push".equals(key)) return R.string.home_push;
+        if ("setting".equals(key)) return R.string.home_setting;
+        return 0;
     }
 
     private void getHistory() {
@@ -435,6 +447,9 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             case PUSH:
                 VideoActivity.push(this, event.text());
                 break;
+            case HOME_BUTTONS:
+                setFunc();
+                break;
         }
     }
 
@@ -466,6 +481,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         if (item.getResId() == R.string.home_vod) VodActivity.start(this, mResult);
         else if (item.getResId() == R.string.home_live) LiveActivity.start(this);
         else if (item.getResId() == R.string.home_bili) BiliActivity.start(this);
+        else if (item.getResId() == R.string.home_curtain) CurtainActivity.start(this);
         else if (item.getResId() == R.string.home_keep) KeepActivity.start(this);
         else if (item.getResId() == R.string.home_push) PushActivity.start(this);
         else if (item.getResId() == R.string.home_search) SearchActivity.start(this);
