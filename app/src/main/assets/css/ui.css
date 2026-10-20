@@ -81,7 +81,12 @@ html, body {
 .tab-panel { display: none; }
 .tab-panel.active { display: flex; flex-direction: column; justify-content: center; min-height: 100%; padding: 20px 16px; }
 #panel5.tab-panel.active { display: block; justify-content: unset; padding: 16px; }
-#panel4.tab-panel.active, #panel7.tab-panel.active { display: block; min-height: 0; justify-content: flex-start; }
+#panel4.tab-panel.active, #panel7.tab-panel.active, #panel8.tab-panel.active { display: block; min-height: 0; justify-content: flex-start; }
+.assrt-status { min-height: 18px; font-size: 13px; color: var(--md-on-surface-variant); word-break: break-all; }
+.assrt-credit { font-size: 13px; color: var(--md-primary); }
+.assrt-item { text-align: left; }
+.assrt-item:disabled { opacity: 0.45; }
+.assrt-files { display: flex; flex-direction: column; gap: 6px; margin: 0 0 8px; }
 .curtain-hidden { display: none !important; }
 .curtain-block { display: flex; flex-direction: column; gap: 8px; }
 .curtain-title { font-size: 13px; font-weight: 700; color: var(--md-on-surface-variant); }

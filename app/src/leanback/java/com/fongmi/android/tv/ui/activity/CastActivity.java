@@ -19,6 +19,7 @@ import androidx.media3.ui.PlayerView;
 import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.assrt.AssrtPlayback;
 import com.fongmi.android.tv.Constant;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Sub;
@@ -151,6 +152,7 @@ public class CastActivity extends PlaybackActivity implements CustomKeyDownVod.L
         mAction = intent.getParcelableExtra(CastAction.KEY_EXTRA);
         if (mAction == null) return;
         mBinding.widget.title.setText(getName());
+        AssrtPlayback.update("cast", getName(), "");
         mBinding.widget.title.setSelected(true);
         resetMedia();
         start();
@@ -391,6 +393,7 @@ public class CastActivity extends PlaybackActivity implements CustomKeyDownVod.L
         if (next == null) return;
         mAction = next;
         mBinding.widget.title.setText(getName());
+        AssrtPlayback.update("cast", getName(), "");
         mBinding.widget.title.setSelected(true);
         resetMedia();
         start();
@@ -515,6 +518,7 @@ public class CastActivity extends PlaybackActivity implements CustomKeyDownVod.L
 
     @Override
     protected void onDestroy() {
+        AssrtPlayback.clear("cast");
         mClock.release();
         releaseRenderer();
         App.removeCallbacks(mR1, mR2);

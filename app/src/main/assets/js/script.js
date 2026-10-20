@@ -354,7 +354,7 @@ function showPanel(id) {
         $('#midLabel').text(MIDDLE[id].label);
         $('#midIconPath').attr('d', MIDDLE[id].icon);
     }
-    for (let i = 1; i <= 7; i++) {
+    for (let i = 1; i <= 8; i++) {
         const panel = document.getElementById('panel' + i);
         if (panel) panel.classList.toggle('active', i === id);
     }
@@ -367,6 +367,7 @@ function showPanel(id) {
     if (id === 5 && document.getElementById('file_list').innerHTML === '') listFile('');
     if (id === 4) loadHomeButtons();
     if (id === 6) loadBiliFilter();
+    if (id === 8) loadAssrt();
     watchCurtain(id === 7);
 }
 
@@ -425,7 +426,8 @@ const MIDDLE = {
     3: { label: '弹幕', icon: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z' },
     5: { label: '本地', icon: 'M9.17 6l2 2H20v10H4V6h5.17M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z' },
     6: { label: 'Bilibili', icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z' },
-    7: { label: '幕布', icon: 'M4,3h16v3H4zM5,7h6v13H5zM13,7h6v13h-6z' }
+    7: { label: '幕布', icon: 'M4,3h16v3H4zM5,7h6v13H5zM13,7h6v13h-6z' },
+    8: { label: '字幕', icon: 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 12h4v2H4v-2zm10 6H4v-2h10v2zm6 0h-4v-2h4v2zm0-4H10v-2h10v2z' }
 };
 let middlePanel = 2;
 let curtainTimer = null;
@@ -641,6 +643,126 @@ function curtainClearText() {
     curtainPost({ do: 'clearText' });
 }
 
+function assrtMessage(xhr, fallback) {
+    try {
+        const data = JSON.parse(xhr.responseText);
+        if (data && data.message) return data.message;
+    } catch (e) {
+    }
+    return fallback;
+}
+
+function assrtData(data) {
+    if (typeof data === 'string') {
+        try { return JSON.parse(data); } catch (e) { return {}; }
+    }
+    return data || {};
+}
+
+function loadAssrt() {
+    $.get('/assrt', { do: 'state' }).done(function (data) {
+        const body = assrtData(data);
+        $('#assrt_token').val('');
+        $('#assrt_token_state').text(body.set ? '已设置' : '');
+    });
+    $.get('/assrt', { do: 'playing' }).done(function (data) {
+        const body = assrtData(data);
+        const title = (body.title || '').trim();
+        const episode = (body.episode || '').trim();
+        if (!body.playing) {
+            $('#assrt_q').val('');
+            return;
+        }
+        $('#assrt_q').val(episode ? title + ' ' + episode : title);
+    });
+}
+
+function saveAssrtToken() {
+    $('#assrt_token_status').text('');
+    $.post('/assrt', { do: 'token', token: $('#assrt_token').val() }).done(function (data) {
+        const body = assrtData(data);
+        if (body.message) {
+            $('#assrt_token_status').text(body.message);
+            return;
+        }
+        $('#assrt_token').val('');
+        $('#assrt_token_state').text(body.set ? '已设置' : '');
+        $('#assrt_token_status').text('');
+    }).fail(function (xhr) {
+        $('#assrt_token_status').text(assrtMessage(xhr, '密钥格式不对'));
+    });
+}
+
+function searchAssrt() {
+    $('#assrt_search_status').text('');
+    $('#assrt_result_status').text('');
+    $('#assrt_results').empty();
+    $.get('/assrt', { do: 'search', q: $('#assrt_q').val() }).done(function (data) {
+        const body = assrtData(data);
+        if (body.message) {
+            $('#assrt_search_status').text(body.message);
+            return;
+        }
+        renderAssrtItems(body.items || []);
+        if (!body.items || !body.items.length) $('#assrt_search_status').text('没有找到字幕');
+    }).fail(function (xhr) {
+        $('#assrt_search_status').text(assrtMessage(xhr, '搜索失败'));
+    });
+}
+
+function renderAssrtItems(items) {
+    const box = document.getElementById('assrt_results');
+    box.innerHTML = '';
+    items.forEach(function (item) {
+        const row = document.createElement('div');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'md-btn md-btn-tonal md-btn-full assrt-item';
+        button.disabled = !!item.disabled;
+        const bits = [item.name || '未命名', item.lang || '', item.format || ''].filter(Boolean);
+        button.textContent = bits.join(' · ');
+        if (!item.disabled) button.addEventListener('click', function () { mountAssrt(item.id, '', row); });
+        row.appendChild(button);
+        box.appendChild(row);
+    });
+}
+
+function mountAssrt(id, file, row) {
+    $('#assrt_result_status').text('');
+    $.post('/assrt', { do: 'mount', id: id, file: file || '' }).done(function (data) {
+        const body = assrtData(data);
+        if (body.message) {
+            $('#assrt_result_status').text(body.message);
+            return;
+        }
+        if (body.choose && body.choose.length) {
+            renderAssrtFiles(row, id, body.choose);
+            return;
+        }
+        if (body.ok) $('#assrt_result_status').text('已挂载 ' + (body.name || ''));
+    }).fail(function (xhr) {
+        $('#assrt_result_status').text(assrtMessage(xhr, '字幕下载失败'));
+    });
+}
+
+function renderAssrtFiles(row, id, names) {
+    let box = row.querySelector('.assrt-files');
+    if (!box) {
+        box = document.createElement('div');
+        box.className = 'assrt-files';
+        row.appendChild(box);
+    }
+    box.innerHTML = '';
+    names.forEach(function (name) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'md-btn md-btn-tonal md-btn-full assrt-item';
+        button.textContent = name;
+        button.addEventListener('click', function () { mountAssrt(id, name, row); });
+        box.appendChild(button);
+    });
+}
+
 function curtainSize(bytes) {
     if (!bytes) return '缓存很少';
     if (bytes < 1024 * 1024) return '缓存 ' + Math.max(1, Math.round(bytes / 1024)) + ' KB';
@@ -668,6 +790,8 @@ $(function () {
     $('#danmaku_text').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); sendDanmaku(); } });
     $('#setting_name, #setting_text').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); setting(); } });
     $('#feed_server').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); saveFeed(); } });
+    $('#assrt_token').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); saveAssrtToken(); } });
+    $('#assrt_q').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); searchAssrt(); } });
     $('#newFolderContent').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); confirmNewFolder(1); } });
     $('#curtain_text').on('keydown', function (e) { if (e.key === 'Enter') { this.blur(); curtainText(); } });
     $('#curtain_color').on('change', function () { curtainPost({ do: 'color', value: this.value }); });

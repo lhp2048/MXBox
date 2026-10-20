@@ -39,6 +39,7 @@ import androidx.viewbinding.ViewBinding;
 
 import com.bumptech.glide.request.transition.Transition;
 import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.assrt.AssrtPlayback;
 import com.fongmi.android.tv.Constant;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.DanmakuApi;
@@ -544,6 +545,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     @Override
     public void startPlayback(Result result, boolean useParse, long startPositionMs, History history, Episode episode) {
+        AssrtPlayback.update("vod", history == null ? "" : history.getVodName(), episode == null ? "" : episode.getName());
         startPlayer(getHistoryKey(), result, useParse, getSite().getTimeout(), startPositionMs, VodPlaybackMedia.metadata(history, episode));
     }
 
@@ -1635,6 +1637,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     @Override
     protected void onDestroy() {
+        AssrtPlayback.clear("vod");
         mClock.release();
         saveHistory(true);
         Timer.get().reset();

@@ -192,6 +192,34 @@
                     </div>
                 </div>
             </div>
+            <!-- 字幕 -->
+            <div id="panel8" class="tab-panel">
+                <div class="panel-content">
+                    <div class="curtain-block">
+                        <div class="curtain-title">密钥</div>
+                        <div class="md-field">
+                            <input id="assrt_token" class="md-input" type="password" placeholder="粘贴 32 位密钥" autocomplete="off" />
+                        </div>
+                        <button class="md-btn md-btn-filled md-btn-full" type="button" onclick="saveAssrtToken()">保存</button>
+                        <div id="assrt_token_state" class="assrt-status"></div>
+                        <div id="assrt_token_status" class="assrt-status"></div>
+                        <a class="assrt-credit" href="https://assrt.net" target="_blank" rel="noopener">字幕服务由assrt.net提供</a>
+                    </div>
+                    <div class="curtain-block">
+                        <div class="curtain-title">搜索</div>
+                        <div class="md-field">
+                            <input id="assrt_q" class="md-input" type="text" placeholder="片名" />
+                        </div>
+                        <button class="md-btn md-btn-filled md-btn-full" type="button" onclick="searchAssrt()">搜索</button>
+                        <div id="assrt_search_status" class="assrt-status"></div>
+                    </div>
+                    <div class="curtain-block">
+                        <div class="curtain-title">结果</div>
+                        <div id="assrt_results" class="curtain-list"></div>
+                        <div id="assrt_result_status" class="assrt-status"></div>
+                    </div>
+                </div>
+            </div>
         </div>
         <!-- M3 Navigation Bar -->
         <nav class="md-nav-bar">
@@ -209,6 +237,7 @@
                     <button class="md-more-item" type="button" data-panel="5" onclick="pickMiddle(5)">本地</button>
                     <button class="md-more-item" type="button" data-panel="6" onclick="pickMiddle(6)">Bilibili</button>
                     <button class="md-more-item" type="button" data-panel="7" onclick="pickMiddle(7)">幕布</button>
+                    <button class="md-more-item" type="button" data-panel="8" onclick="pickMiddle(8)">字幕</button>
                 </div>
                 <div id="tabMid" class="md-nav-item" onclick="showMiddle()">
                     <div class="md-nav-indicator">
