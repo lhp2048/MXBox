@@ -43,6 +43,9 @@ import com.fongmi.android.tv.event.CastEvent;
 import com.fongmi.android.tv.event.ConfigEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.event.ServerEvent;
+import com.fongmi.android.tv.home.HomeButtons;
+import com.fongmi.android.tv.ui.dialog.MxBoxSourceDialog;
+import com.fongmi.android.tv.ui.helper.MxBoxHomeTitle;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.model.SiteViewModel;
 import com.fongmi.android.tv.player.extractor.Source;
@@ -223,6 +226,11 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     private void setTitle() {
+        String custom = MxBoxHomeTitle.text(this);
+        if (!TextUtils.isEmpty(custom)) {
+            mBinding.title.setText(custom);
+            return;
+        }
         List<String> items = Arrays.asList(getHome().getName(), getConfig().getName(), getString(R.string.app_name));
         Optional<String> optional = items.stream().filter(s -> !TextUtils.isEmpty(s)).findFirst();
         optional.ifPresent(s -> mBinding.title.setText(s));
@@ -320,13 +328,27 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     private void setFunc() {
         List<Func> items = new ArrayList<>();
-        items.add(Func.create(R.string.home_vod));
-        if (LiveConfig.hasUrl()) items.add(Func.create(R.string.home_live));
-        items.add(Func.create(R.string.home_search));
-        items.add(Func.create(R.string.home_keep));
-        items.add(Func.create(R.string.home_push));
-        items.add(Func.create(R.string.home_setting));
+        for (String key : HomeButtons.order()) {
+            if (HomeButtons.hidden(key)) continue;
+            if ("live".equals(key) && !LiveConfig.hasUrl()) continue;
+            int resId = homeRes(key);
+            if (resId != 0) items.add(Func.create(resId));
+        }
         mFuncAdapter.setItems(items, new BaseDiffCallback<Func>());
+    }
+
+    private int homeRes(String key) {
+        return switch (key) {
+            case "bili" -> R.string.home_bili;
+            case "curtain" -> R.string.home_curtain;
+            case "vod" -> R.string.home_vod;
+            case "live" -> R.string.home_live;
+            case "search" -> R.string.home_search;
+            case "keep" -> R.string.home_keep;
+            case "push" -> R.string.home_push;
+            case "setting" -> R.string.home_setting;
+            default -> 0;
+        };
     }
 
     private void getHistory() {
@@ -366,6 +388,8 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     private void setLogo() {
         ImgUtil.logo(mBinding.logo);
+        mBinding.logo.setFocusable(true);
+        mBinding.logo.setOnClickListener(v -> MxBoxSourceDialog.create().show(this));
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -411,6 +435,9 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             case PUSH:
                 VideoActivity.push(this, event.text());
                 break;
+            case HOME_BUTTONS:
+                setFunc();
+                break;
         }
     }
 
@@ -437,6 +464,8 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     @Override
     public void onItemClick(Func item) {
         if (item.getResId() == R.string.home_vod) VodActivity.start(this, mResult);
+        else if (item.getResId() == R.string.home_bili) BiliActivity.start(this);
+        else if (item.getResId() == R.string.home_curtain) CurtainActivity.start(this);
         else if (item.getResId() == R.string.home_live) LiveActivity.start(this);
         else if (item.getResId() == R.string.home_keep) KeepActivity.start(this);
         else if (item.getResId() == R.string.home_push) LocalConnectDialog.show(this, "push");

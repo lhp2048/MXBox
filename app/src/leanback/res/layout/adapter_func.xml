@@ -1,27 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="100dp"
+    android:layout_width="108dp"
     android:layout_height="100dp"
-    android:background="@drawable/selector_item"
+    android:background="@drawable/selector_func"
     android:focusable="true"
     android:focusableInTouchMode="true"
     android:gravity="center"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp">
 
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/icon"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:tint="@color/white"
         tools:src="@drawable/ic_home_vod" />
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="6dp"
+        android:ellipsize="end"
+        android:maxLines="1"
         android:textColor="@color/white"
-        android:textSize="18sp"
-        tools:text="點播" />
+        android:textSize="15sp"
+        tools:text="Bilibili" />
 
 </androidx.appcompat.widget.LinearLayoutCompat>

@@ -11,6 +11,8 @@ import com.fongmi.android.tv.bean.Parse;
 import com.fongmi.android.tv.bean.Rule;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.event.ConfigEvent;
+import com.fongmi.android.tv.event.ConfigLoadEvent;
+import com.fongmi.android.tv.event.DepotLoadEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.utils.UrlUtil;
@@ -20,10 +22,13 @@ import com.github.catvod.bean.Proxy;
 import com.github.catvod.runtime.NodeRuntimeApi;
 import com.github.catvod.utils.Decoder;
 import com.github.catvod.utils.Json;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -140,6 +145,11 @@ public class VodConfig extends BaseConfig {
 
     private void checkJson(Config config, JsonObject object, NodeRuntimeApi.LoadedConfig loaded) throws Throwable {
         if (object.has("msg")) throw new Exception(object.get("msg").getAsString());
+        if (object.has("storeHouse")) {
+            if (loaded != null) NodeRuntime.get().accept(loaded);
+            parseStoreHouse(config, object);
+            return;
+        }
         if (object.has("urls")) {
             List<Depot> items = Depot.arrayFrom(object.getAsJsonArray("urls").toString());
             if (items.isEmpty()) throw new Exception("Depot urls is empty");
@@ -151,11 +161,86 @@ public class VodConfig extends BaseConfig {
         if (loaded != null) NodeRuntime.get().accept(loaded);
     }
 
+    private void parseStoreHouse(Config config, JsonObject object) throws Throwable {
+        JsonArray storeHouse = object.getAsJsonArray("storeHouse");
+        JsonArray urls = new JsonArray();
+        for (JsonElement element : storeHouse) {
+            if (!element.isJsonObject()) continue;
+            JsonObject item = element.getAsJsonObject();
+            JsonObject url = new JsonObject();
+            url.addProperty("name", Json.safeString(item, "sourceName"));
+            url.addProperty("url", Json.safeString(item, "sourceUrl"));
+            urls.add(url);
+        }
+        List<Depot> items = Depot.arrayFrom(urls);
+        if (items.isEmpty()) throw new Exception("Depot urls is empty");
+        parseDepot(config, items);
+    }
+
     private void parseDepot(Config config, List<Depot> items) throws Throwable {
         List<Config> configs = new ArrayList<>();
         for (Depot item : items) configs.add(Config.find(item, VOD));
-        load(this.config = configs.get(0));
-        Config.delete(config.getUrl());
+        if (configs.size() <= 1) {
+            load(this.config = configs.get(0));
+            Config.delete(config.getUrl());
+            return;
+        }
+        parseDepotMerge(config, configs);
+    }
+
+    private void parseDepotMerge(Config feedConfig, List<Config> configs) throws Throwable {
+        int total = configs.size();
+        DepotLoadEvent.start(total);
+        LinkedHashMap<String, Site> merged = new LinkedHashMap<>();
+        JsonObject primaryObject = null;
+        Config primary = configs.get(0);
+        try {
+            for (int i = 0; i < configs.size(); i++) {
+                if (Thread.currentThread().isInterrupted()) throw new InterruptedException("Canceled");
+                Config depotConfig = configs.get(i);
+                String json = Decoder.getJson(UrlUtil.convert(depotConfig.getUrl()), TAG);
+                JsonObject obj = Json.parse(json).getAsJsonObject();
+                if (obj.has("msg") || obj.has("urls") || obj.has("storeHouse")) {
+                    DepotLoadEvent.progress(i + 1, total, depotConfig.getDesc(), merged.size());
+                    ConfigLoadEvent.depotMerge(ConfigLoadEvent.TYPE_VOD, i + 1, total, depotConfig.getDesc(), merged.size());
+                    continue;
+                }
+                if (primaryObject == null) {
+                    primaryObject = obj;
+                    primary = depotConfig;
+                }
+                String spider = Json.safeString(obj, "spider");
+                if (!TextUtils.isEmpty(spider)) BaseLoader.get().parseJar(spider, primaryObject == obj);
+                for (JsonElement element : Json.safeListElement(obj, "sites")) {
+                    Site site = Site.objectFrom(element, spider);
+                    if (!site.isEmpty()) merged.putIfAbsent(site.getKey(), site);
+                }
+                DepotLoadEvent.progress(i + 1, total, depotConfig.getDesc(), merged.size());
+                ConfigLoadEvent.depotMerge(ConfigLoadEvent.TYPE_VOD, i + 1, total, depotConfig.getDesc(), merged.size());
+            }
+            if (primaryObject == null || merged.isEmpty()) throw new Exception("No valid depot config");
+            this.config = primary;
+            parseConfig(primary, primaryObject);
+            setSites(new ArrayList<>(merged.values()));
+            Map<String, Site> saved = Site.findAll().stream().collect(Collectors.toMap(Site::getKey, Function.identity()));
+            getSites().forEach(site -> site.sync(saved.get(site.getKey())));
+            setHome(primary, getSites().stream().filter(item -> item.getKey().equals(primary.getHome())).findFirst().orElse(getSites().get(0)), false);
+            primary.update();
+            Config.delete(feedConfig.getUrl());
+            DepotLoadEvent.done(merged.size());
+        } catch (Throwable e) {
+            DepotLoadEvent.error();
+            throw e;
+        }
+    }
+
+    public void reloadLiveMerge() throws Throwable {
+        Config config = getConfig();
+        if (config == null || config.isEmpty()) return;
+        String json = Decoder.getJson(UrlUtil.convert(config.getUrl()), TAG);
+        if (!Json.isObj(json)) return;
+        Config temp = Config.find(config, LIVE).save();
+        LiveConfig.get().config(temp.update()).parse(Json.parse(json).getAsJsonObject());
     }
 
     private void parseConfig(Config config, JsonObject object) {
@@ -181,10 +266,10 @@ public class VodConfig extends BaseConfig {
     }
 
     private void initLive(Config config, JsonObject object) {
-        if (Json.isEmpty(object, "lives")) return;
+        if (Json.isEmpty(object, "lives") && !MxBoxFeedStore.hasLives()) return;
         Config temp = Config.find(config, LIVE).save();
         boolean sync = LiveConfig.get().needSync(config.getUrl());
-        if (sync) LiveConfig.get().config(temp.update()).parse(object);
+        if (sync || MxBoxFeedStore.hasLives()) LiveConfig.get().config(temp.update()).parse(object);
     }
 
     private void initWall(Config config, JsonObject object) {

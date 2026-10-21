@@ -16,6 +16,8 @@ import androidx.viewbinding.ViewBinding;
 import androidx.viewpager.widget.ViewPager;
 
 import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.api.config.HomeResultCache;
+import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Class;
 import com.fongmi.android.tv.bean.Config;
@@ -25,6 +27,8 @@ import com.fongmi.android.tv.bean.Value;
 import com.fongmi.android.tv.databinding.FragmentVodBinding;
 import com.fongmi.android.tv.event.CastEvent;
 import com.fongmi.android.tv.event.ConfigEvent;
+import com.fongmi.android.tv.event.ConfigLoadEvent;
+import com.fongmi.android.tv.event.DepotLoadEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.event.StateEvent;
 import com.fongmi.android.tv.impl.Callback;
@@ -37,8 +41,11 @@ import com.fongmi.android.tv.ui.activity.KeepActivity;
 import com.fongmi.android.tv.ui.activity.SearchActivity;
 import com.fongmi.android.tv.ui.adapter.TypeAdapter;
 import com.fongmi.android.tv.ui.base.BaseFragment;
+import com.fongmi.android.tv.ui.dialog.ConfigDialog;
 import com.fongmi.android.tv.ui.dialog.FilterDialog;
-import com.fongmi.android.tv.ui.dialog.HistoryDialog;
+import com.fongmi.android.tv.ui.helper.LoadProgressHelper;
+import com.fongmi.android.tv.ui.helper.MxBoxHomeTitle;
+import com.fongmi.android.tv.ui.helper.MxBoxSubscriptionActions;
 import com.fongmi.android.tv.ui.dialog.LinkDialog;
 import com.fongmi.android.tv.ui.dialog.ReceiveDialog;
 import com.fongmi.android.tv.ui.dialog.SiteDialog;
@@ -52,8 +59,6 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
-
 public class VodFragment extends BaseFragment implements ConfigListener, SiteListener, FilterListener, TypeAdapter.OnClickListener {
 
     private FragmentVodBinding mBinding;
@@ -131,9 +136,12 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     }
 
     private void setAdapter(Result result) {
+        mAdapter.clear();
         mAdapter.addAll(mResult = result);
         mBinding.pager.getAdapter().notifyDataSetChanged();
         setFabVisible(0);
+        HomeResultCache.put(VodConfig.getCid(), getHome().getKey(), result);
+        ConfigLoadEvent.done();
         hideProgress();
         showContent();
     }
@@ -155,9 +163,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     }
 
     private void setTitle() {
-        List<String> items = Arrays.asList(getHome().getName(), getConfig().getName(), getString(R.string.app_name));
-        Optional<String> optional = items.stream().filter(s -> !TextUtils.isEmpty(s)).findFirst();
-        optional.ifPresent(s -> mBinding.title.setText(s));
+        mBinding.title.setText(MxBoxHomeTitle.text(requireContext()));
     }
 
     private void onTop(View view) {
@@ -173,7 +179,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     }
 
     private void onLogo(View view) {
-        HistoryDialog.create().vod().readOnly().show(this);
+        MxBoxSubscriptionActions.open(requireActivity(), this);
     }
 
     private void onSite(View view) {
@@ -193,10 +199,31 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
 
     private void showProgress() {
         mBinding.progress.getRoot().setVisibility(View.VISIBLE);
+        LoadProgressHelper.bindActive(mBinding.progress, requireContext());
     }
 
     private void hideProgress() {
         mBinding.progress.getRoot().setVisibility(View.GONE);
+        LoadProgressHelper.reset(mBinding.progress);
+        ConfigLoadEvent.reset();
+    }
+
+    private void updateLoadProgress(ConfigLoadEvent event) {
+        if (mBinding.progress.getRoot().getVisibility() != View.VISIBLE) return;
+        LoadProgressHelper.bind(mBinding.progress, event, requireContext());
+    }
+
+    private void onCancelLoad(View view) {
+        cancelHomeLoad();
+        hideProgress();
+        showContent();
+        ConfigDialog.create().vod().show(this);
+    }
+
+    private void cancelHomeLoad() {
+        VodConfig.get().cancelLoad();
+        LiveConfig.get().cancelLoad();
+        mViewModel.cancelHome();
     }
 
     private void hideContent() {
@@ -210,11 +237,21 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     }
 
     private void homeContent() {
-        showProgress();
         setFabVisible(0);
-        mAdapter.clear();
+        String siteKey = getHome().getKey();
+        Result cached = HomeResultCache.get(VodConfig.getCid(), siteKey);
+        if (cached != null) {
+            mAdapter.clear();
+            mAdapter.addAll(mResult = cached);
+            mBinding.pager.setAdapter(new PageAdapter(getChildFragmentManager()));
+            showContent();
+        } else {
+            showProgress();
+            mAdapter.clear();
+            mBinding.pager.setAdapter(new PageAdapter(getChildFragmentManager()));
+        }
+        ConfigLoadEvent.homeContent();
         mViewModel.homeContent();
-        mBinding.pager.setAdapter(new PageAdapter(getChildFragmentManager()));
     }
 
     public Result getResult() {
@@ -226,8 +263,24 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onConfigLoadEvent(ConfigLoadEvent event) {
+        if (event.configType != 0) return;
+        updateLoadProgress(event);
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onDepotLoadEvent(DepotLoadEvent event) {
+        if (mBinding.progress.getRoot().getVisibility() == View.VISIBLE) {
+            LoadProgressHelper.bindDepot(mBinding.progress, requireContext());
+        }
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
     public void onConfigEvent(ConfigEvent event) {
-        if (event.type() == ConfigEvent.Type.VOD) setLogo();
+        if (event.type() == ConfigEvent.Type.VOD) {
+            setLogo();
+            setTitle();
+        }
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -275,7 +328,9 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
             @Override
             public void error(String msg) {
                 Notify.dismiss();
+                ConfigLoadEvent.error(msg);
                 Notify.show(msg);
+                hideProgress();
                 showContent();
             }
         });
@@ -299,6 +354,10 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
 
     @Override
     public boolean canBack() {
+        if (mBinding.progress.getRoot().getVisibility() == View.VISIBLE) {
+            onCancelLoad(null);
+            return false;
+        }
         if (mBinding.pager.getAdapter() == null || mBinding.pager.getAdapter().getCount() == 0) return true;
         if (!getFragment().canBack()) return true;
         getFragment().goBack();

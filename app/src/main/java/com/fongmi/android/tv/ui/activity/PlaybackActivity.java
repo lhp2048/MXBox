@@ -638,11 +638,16 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
         attachPlayerView();
         updateNavigationKey(key);
         if (result.needParse() || useParse) player().parse(key, result, useParse, metadata, startPositionMs, endingDurationMs());
-        else player().start(PlaySpec.from(result, key, metadata).setEnding(endingDurationMs()), timeout, startPositionMs);
+        else player().start(PlaySpec.from(result, key, metadata).setEnding(endingDurationMs()), resolvePlayTimeout(result, timeout), startPositionMs);
     }
 
     protected long endingDurationMs() {
         return 0;
+    }
+
+    private long resolvePlayTimeout(Result result, long timeout) {
+        if (UrlUtil.isLocalServer(result.getRealUrl())) return Math.max(timeout, Constant.TIMEOUT_PLAY_PROXY);
+        return timeout;
     }
 
     private void bindPlaybackService() {

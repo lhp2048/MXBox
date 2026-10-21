@@ -6,8 +6,11 @@ plugins {
 }
 
 def localProps = new Properties()
-rootProject.file('local.properties').withInputStream {
-    localProps.load(it)
+def localPropsFile = rootProject.file('local.properties')
+if (localPropsFile.exists()) {
+    localPropsFile.withInputStream {
+        localProps.load(it)
+    }
 }
 
 android {
@@ -16,12 +19,14 @@ android {
     compileSdk libs.versions.compileSdk.get().toInteger()
 
     defaultConfig {
-        applicationId "com.fongmi.android.tv"
+        applicationId "com.mx.mxbox"
         minSdk libs.versions.minSdk.get().toInteger()
         targetSdk libs.versions.targetSdk.get().toInteger()
-        versionCode 578
-        versionName "5.7.8"
+        versionCode 100
+        versionName "1.0.0"
         manifestPlaceholders.runtimeCatalog = providers.gradleProperty('tvRuntimeCatalog').getOrElse('https://github.com/FongMi/Release/releases/download/module/catalog.json')
+        buildConfigField "String", "REMOTE_CONFIG_URL", "\"\""
+        buildConfigField "int", "DEFAULT_CONFIG_VERSION", "1"
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments = ["room.schemaLocation": "$projectDir/schemas".toString(), "eventBusIndex": "com.fongmi.android.tv.event.EventIndex"]
@@ -56,22 +61,28 @@ android {
 
     signingConfigs {
         release {
-            storeFile file(localProps['storeFile'])
-            keyAlias localProps['keyAlias']
-            keyPassword localProps['storePassword']
-            storePassword localProps['storePassword']
+            if (localProps['storeFile']) {
+                storeFile file(localProps['storeFile'])
+                keyAlias localProps['keyAlias']
+                keyPassword localProps['storePassword']
+                storePassword localProps['storePassword']
+            }
         }
     }
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.release
+            if (signingConfigs.release.storeFile != null) signingConfig signingConfigs.release
         }
         release {
             minifyEnabled = true
             shrinkResources = true
-            signingConfig = signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (signingConfigs.release.storeFile != null) {
+                signingConfig signingConfigs.release
+            } else {
+                signingConfig signingConfigs.debug
+            }
         }
     }
 
@@ -89,11 +100,18 @@ android {
         disable 'ExpiredTargetSdkVersion'
     }
 
+    packaging {
+        resources {
+            pickFirst 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
+        }
+    }
+
     compileOptions {
         coreLibraryDesugaringEnabled = true
         sourceCompatibility JavaVersion.VERSION_21
         targetCompatibility JavaVersion.VERSION_21
     }
+
 }
 
 AbiApkPackaging.configure(project, SingleArtifact.APK.INSTANCE)

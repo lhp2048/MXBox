@@ -61,6 +61,12 @@ public class PyLoader {
         return failure;
     }
 
+    public void releaseSpiders() {
+        spiders.values().forEach(Spider::destroy);
+        spiders.clear();
+        recent = null;
+    }
+
     public void setRecent(String recent) {
         this.recent = recent;
     }

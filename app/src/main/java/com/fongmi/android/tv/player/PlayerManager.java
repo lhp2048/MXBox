@@ -31,6 +31,7 @@ import androidx.media3.ui.danmaku.DanmakuConfig;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Constant;
+import com.fongmi.android.tv.utils.UrlUtil;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Danmaku;
 import com.fongmi.android.tv.bean.Result;
@@ -883,7 +884,12 @@ public class PlayerManager implements ParseCallback {
     }
 
     private void startCurrent(long startPositionMs) {
-        setMediaItem(Constant.TIMEOUT_PLAY, startPositionMs, false);
+        setMediaItem(resolvePlayTimeout(), startPositionMs, false);
+    }
+
+    private long resolvePlayTimeout() {
+        if (spec != null && UrlUtil.isLocalServer(spec.getUrl())) return Math.max(Constant.TIMEOUT_PLAY, Constant.TIMEOUT_PLAY_PROXY);
+        return Constant.TIMEOUT_PLAY;
     }
 
     private void startPreloadIfReady() {
@@ -934,7 +940,7 @@ public class PlayerManager implements ParseCallback {
         if (headers != null) headers.remove(HttpHeaders.RANGE);
         if (spec != null) spec.setHeaders(headers);
         if (spec != null) spec.setUrl(url);
-        setMediaItem(Constant.TIMEOUT_PLAY, pendingStartPositionMs, true);
+        setMediaItem(resolvePlayTimeout(), pendingStartPositionMs, true);
         pendingStartPositionMs = C.TIME_UNSET;
     }
 

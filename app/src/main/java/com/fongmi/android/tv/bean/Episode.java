@@ -84,6 +84,13 @@ public class Episode implements Parcelable, Diffable<Episode> {
         return selected;
     }
 
+    public boolean isDirectPlay() {
+        String url = getUrl();
+        if (url.isEmpty()) return false;
+        String play = url.split("@", 2)[0];
+        return play.contains(".m3u8") || url.contains("@@1@");
+    }
+
     public void setSelected(boolean selected) {
         this.selected = selected;
     }

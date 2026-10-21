@@ -30,6 +30,7 @@ import androidx.viewbinding.ViewBinding;
 
 import com.bumptech.glide.request.transition.Transition;
 import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.assrt.AssrtPlayback;
 import com.fongmi.android.tv.Constant;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.DanmakuApi;
@@ -568,6 +569,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
 
     @Override
     public void startPlayback(Result result, boolean useParse, long startPositionMs, MediaMetadata metadata) {
+        AssrtPlayback.update("vod", mHistory == null ? "" : mHistory.getVodName(), mHistory == null ? "" : mHistory.getVodRemarks());
         ExternalPlayback.apply(result, getIntent());
         startPositionMs = ExternalPlayback.takePosition(getIntent(), startPositionMs);
         if (startWebPlayback(mBinding.video, result)) return;
@@ -1648,6 +1650,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
 
     @Override
     protected void onDestroy() {
+        AssrtPlayback.clear("vod");
         mClock.release();
         saveHistory(true);
         DanmakuApi.cancel();

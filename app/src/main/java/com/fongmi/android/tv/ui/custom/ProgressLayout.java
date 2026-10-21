@@ -9,6 +9,8 @@ import android.widget.RelativeLayout;
 
 import com.fongmi.android.tv.databinding.ViewEmptyBinding;
 import com.fongmi.android.tv.databinding.ViewProgressBinding;
+import com.fongmi.android.tv.event.ConfigLoadEvent;
+import com.fongmi.android.tv.ui.helper.LoadProgressHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +24,7 @@ public class ProgressLayout extends RelativeLayout {
     }
 
     private List<View> mContentViews;
+    private ViewProgressBinding mProgressBinding;
     private View mProgressView;
     private View mEmptyView;
     private State mState;
@@ -50,7 +53,9 @@ public class ProgressLayout extends RelativeLayout {
         mEmptyView = ViewEmptyBinding.inflate(LayoutInflater.from(getContext())).getRoot();
         mEmptyView.setTag(TAG_PROGRESS);
         mEmptyView.setVisibility(GONE);
-        mProgressView = ViewProgressBinding.inflate(LayoutInflater.from(getContext())).getRoot();
+        ViewProgressBinding progressBinding = ViewProgressBinding.inflate(LayoutInflater.from(getContext()));
+        mProgressBinding = progressBinding;
+        mProgressView = progressBinding.getRoot();
         mProgressView.setTag(TAG_PROGRESS);
         mProgressView.setVisibility(GONE);
         LayoutParams params = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -69,6 +74,18 @@ public class ProgressLayout extends RelativeLayout {
 
     public void showProgress() {
         switchState(State.PROGRESS);
+    }
+
+    public void updateLoadProgress(ConfigLoadEvent event) {
+        LoadProgressHelper.bind(mProgressBinding, event, getContext());
+    }
+
+    public void resetLoadProgress() {
+        LoadProgressHelper.reset(mProgressBinding);
+    }
+
+    public void bindDepotProgress() {
+        LoadProgressHelper.bindDepot(mProgressBinding, getContext());
     }
 
     public void showEmpty() {

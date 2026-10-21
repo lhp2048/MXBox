@@ -7,6 +7,9 @@
     <string name="home_keep">收藏</string>
     <string name="home_push">连接</string>
     <string name="home_setting">设置</string>
+    <string name="home_bili">Bilibili</string>
+    <string name="home_curtain">幕布</string>
+    <string name="curtain_scan">手机请连同一个 Wi-Fi</string>
     <string name="home_history">最近观看</string>
     <string name="home_recommend">更新推荐</string>
 
@@ -19,5 +22,38 @@
     <string name="dialog_action_clear_all">取消全选</string>
     <string name="dialog_action_grid">切换为网格</string>
     <string name="dialog_action_list">切换为列表</string>
+
+    <string name="bili_search_hint">搜索视频或 UP</string>
+    <string name="bili_search_code">扫码搜索</string>
+    <string name="bili_search_history">搜索历史</string>
+    <string name="bili_search_suggest">搜索联想</string>
+    <string name="bili_search_code_hint">用手机扫描后，把搜索内容发到电视</string>
+    <string name="bili_setting">设置</string>
+    <string name="bili_tab_recommend">推荐</string>
+    <string name="bili_tab_follow">我的关注</string>
+    <string name="bili_tab_favorite">收藏视频</string>
+    <string name="bili_tab_up">收藏博主</string>
+    <string name="bili_fav">收藏视频</string>
+    <string name="bili_unfav">取消收藏视频</string>
+    <string name="bili_fav_up">收藏博主</string>
+    <string name="bili_unfav_up">取消收藏博主</string>
+    <string name="bili_more">更多作品</string>
+    <string name="bili_quality">清晰度</string>
+    <string name="bili_playing">播放中</string>
+    <string name="bili_paused">已暂停</string>
+    <string name="bili_qr">请使用手机哔哩哔哩 App 扫码登录</string>
+    <string name="bili_qr_scanned">已扫码，请在手机上确认</string>
+    <string name="bili_load_fail">加载失败</string>
+    <string name="bili_play_fail">播放失败</string>
+    <string name="bili_unsupported">暂不支持</string>
+    <string name="bili_empty">没有内容</string>
+    <string name="bili_empty_follow">暂无关注投稿</string>
+    <string name="bili_empty_fav">还没有收藏视频</string>
+    <string name="bili_empty_up">还没有收藏博主</string>
+    <string name="bili_search_video">视频</string>
+    <string name="bili_search_up">博主</string>
+    <string name="bili_space_latest">最新视频</string>
+    <string name="bili_logout">退出登录</string>
+    <string name="bili_close">关闭</string>
 
 </resources>

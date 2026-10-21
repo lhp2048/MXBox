@@ -7,6 +7,7 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewbinding.ViewBinding;
 
+import com.fongmi.android.tv.api.config.MxBoxUserSourceStore;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.databinding.DialogHistoryBinding;
 import com.fongmi.android.tv.impl.ConfigListener;
@@ -23,6 +24,7 @@ public class HistoryDialog extends BaseAlertDialog implements ConfigAdapter.OnCl
 
     private int type;
     private boolean readOnly;
+    private boolean userOnly;
 
     public static HistoryDialog create() {
         return new HistoryDialog();
@@ -45,6 +47,11 @@ public class HistoryDialog extends BaseAlertDialog implements ConfigAdapter.OnCl
 
     public HistoryDialog readOnly() {
         readOnly = true;
+        return this;
+    }
+
+    public HistoryDialog userOnly() {
+        userOnly = true;
         return this;
     }
 
@@ -83,7 +90,9 @@ public class HistoryDialog extends BaseAlertDialog implements ConfigAdapter.OnCl
         binding.recycler.setHasFixedSize(false);
         if (isFull()) binding.recycler.setMaxHeight(ResUtil.dp2px(264));
         binding.recycler.addItemDecoration(new SpaceItemDecoration(1, 8));
-        binding.recycler.setAdapter(adapter.readOnly(readOnly).addAll(type));
+        if (userOnly) adapter.readOnly(readOnly).setItems(MxBoxUserSourceStore.getConfigs(type));
+        else adapter.readOnly(readOnly).addAll(type);
+        binding.recycler.setAdapter(adapter);
     }
 
     @Override
@@ -94,6 +103,7 @@ public class HistoryDialog extends BaseAlertDialog implements ConfigAdapter.OnCl
 
     @Override
     public void onDeleteClick(Config item) {
+        if (userOnly) MxBoxUserSourceStore.remove(item);
         if (adapter.remove(item) == 0) dismiss();
     }
 

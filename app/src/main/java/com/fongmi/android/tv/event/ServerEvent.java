@@ -8,6 +8,18 @@ public record ServerEvent(Type type, String text, String name) {
         EventBus.getDefault().post(new ServerEvent(Type.SEARCH, text));
     }
 
+    public static void bili(String text) {
+        EventBus.getDefault().post(new ServerEvent(Type.BILI, text));
+    }
+
+    public static void biliFilter() {
+        EventBus.getDefault().post(new ServerEvent(Type.BILI_FILTER, ""));
+    }
+
+    public static void homeButtons() {
+        EventBus.getDefault().post(new ServerEvent(Type.HOME_BUTTONS, ""));
+    }
+
     public static void push(String text) {
         EventBus.getDefault().post(new ServerEvent(Type.PUSH, text));
     }
@@ -25,6 +37,6 @@ public record ServerEvent(Type type, String text, String name) {
     }
 
     public enum Type {
-        SEARCH, PUSH, SETTING
+        SEARCH, PUSH, SETTING, BILI, BILI_FILTER, HOME_BUTTONS
     }
 }

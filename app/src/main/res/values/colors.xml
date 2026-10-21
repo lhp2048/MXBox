@@ -1,5 +1,13 @@
 <resources>
 
+    <color name="mx_primary">#1E88E5</color>
+    <color name="mx_accent">#FF6F00</color>
+    <color name="mx_splash_bg">#121212</color>
+    <color name="mx_dialog_bg">#E6121212</color>
+    <color name="mx_probe_ok_bg">#331E88E5</color>
+    <color name="mx_probe_fail_bg">#33FF5252</color>
+    <color name="mx_probe_testing_bg">#33FF6F00</color>
+    <color name="mx_probe_fail">#FF5252</color>
     <color name="transparent">#00000000</color>
     <color name="black">#000000</color>
     <color name="black_05">#0D000000</color>

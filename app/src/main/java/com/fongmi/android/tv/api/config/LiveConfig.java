@@ -23,11 +23,14 @@ import com.github.catvod.utils.Auth;
 import com.github.catvod.utils.Decoder;
 import com.github.catvod.utils.Json;
 import com.github.catvod.utils.UriUtil;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -161,8 +164,25 @@ public class LiveConfig extends BaseConfig {
 
     private void checkJson(Config config, JsonObject object) throws Throwable {
         if (object.has("msg")) throw new Exception(object.get("msg").getAsString());
+        else if (object.has("storeHouse")) parseStoreHouse(config, object);
         else if (object.has("urls")) parseDepot(config, object);
         else parseConfig(config, object);
+    }
+
+    private void parseStoreHouse(Config config, JsonObject object) throws Throwable {
+        JsonArray storeHouse = object.getAsJsonArray("storeHouse");
+        JsonArray urls = new JsonArray();
+        for (JsonElement element : storeHouse) {
+            if (!element.isJsonObject()) continue;
+            JsonObject item = element.getAsJsonObject();
+            JsonObject url = new JsonObject();
+            url.addProperty("name", Json.safeString(item, "sourceName"));
+            url.addProperty("url", Json.safeString(item, "sourceUrl"));
+            urls.add(url);
+        }
+        JsonObject wrapper = new JsonObject();
+        wrapper.add("urls", urls);
+        parseDepot(config, wrapper);
     }
 
     private void parseDepot(Config config, JsonObject object) throws Throwable {
@@ -192,12 +212,21 @@ public class LiveConfig extends BaseConfig {
     }
 
     private void initLive(Config config, JsonObject object) {
-        String spider = Json.safeString(object, "spider");
-        BaseLoader.get().parseJar(spider, false);
-        setLives(Json.safeListElement(object, "lives").stream().map(e -> Live.objectFrom(e, spider)).distinct().collect(Collectors.toCollection(ArrayList::new)));
+        String spider = object == null ? "" : Json.safeString(object, "spider");
+        if (!TextUtils.isEmpty(spider)) BaseLoader.get().parseJar(spider, false);
+        LinkedHashMap<String, Live> merged = new LinkedHashMap<>();
+        for (Live live : MxBoxFeedStore.copyLives(MxBoxFeedStore.getLives())) merged.put(live.getName(), live);
+        if (object != null && !Json.isEmpty(object, "lives")) {
+            for (JsonElement element : Json.safeListElement(object, "lives")) {
+                Live live = Live.objectFrom(element, spider);
+                if (!live.isEmpty()) merged.putIfAbsent(live.getName(), live);
+            }
+        }
+        if (merged.isEmpty()) return;
+        setLives(new ArrayList<>(merged.values()));
         Map<String, Live> items = Live.findAll().stream().collect(Collectors.toMap(Live::getName, Function.identity()));
         getLives().forEach(live -> live.sync(items.get(live.getName())));
-        setHome(config, getLives().isEmpty() ? new Live() : getLives().stream().filter(item -> item.getName().equals(config.getHome())).findFirst().orElse(getLives().get(0)), false);
+        setHome(config, getLives().get(0), false);
     }
 
     public void setKeep(Channel channel) {

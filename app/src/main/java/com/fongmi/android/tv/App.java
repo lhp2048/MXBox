@@ -19,6 +19,10 @@ import androidx.media3.mpvplayer.MpvLibrary;
 
 import com.fongmi.android.tv.player.mpv.MpvUtil;
 import com.fongmi.android.tv.receiver.RuntimeReceiver;
+import com.fongmi.android.tv.cast.CastReceiver;
+import com.fongmi.android.tv.MxBoxBootstrap;
+
+import com.fongmi.android.tv.ui.custom.GlobalDanmaku;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.RuntimeInstaller;
 import com.fongmi.hook.Hook;
@@ -95,7 +99,9 @@ public class App extends Application implements Application.ActivityLifecycleCal
     public void onCreate() {
         super.onCreate();
         initRuntime();
+        MxBoxBootstrap.init();
         Notify.createChannel();
+        CastReceiver.startIfEnabled(this);
         registerActivityLifecycleCallbacks(this);
     }
 
@@ -143,10 +149,12 @@ public class App extends Application implements Application.ActivityLifecycleCal
         RuntimeModule.refresh();
         RuntimeInstaller.resumeUpdate(activity);
         Updater.get().notifyModules();
+        GlobalDanmaku.attach(activity);
     }
 
     @Override
     public void onActivityPaused(@NonNull Activity activity) {
+        GlobalDanmaku.detach(activity);
         if (activity == activity()) this.activity = null;
     }
 

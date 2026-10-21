@@ -4,9 +4,11 @@ import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.bean.Device;
 import com.fongmi.android.tv.server.impl.Process;
 import com.fongmi.android.tv.server.process.Action;
+import com.fongmi.android.tv.server.process.Assrt;
 import com.fongmi.android.tv.server.process.Cache;
 import com.fongmi.android.tv.server.process.Fetch;
 import com.fongmi.android.tv.server.process.Image;
+import com.fongmi.android.tv.server.process.Curtain;
 import com.fongmi.android.tv.server.process.Local;
 import com.fongmi.android.tv.server.process.Log;
 import com.fongmi.android.tv.server.process.Media;
@@ -47,6 +49,8 @@ public class Nano extends NanoHTTPD {
     private void addProcess() {
         process = new ArrayList<>();
         process.add(new Action());
+        process.add(new Assrt());
+        process.add(new Curtain());
         process.add(new Cache());
         process.add(new Image());
         process.add(new Local());

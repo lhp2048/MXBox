@@ -220,6 +220,24 @@
                     </a>
                 </div>
             </div>
+
+            <div class="md-card panel-content">
+                <div class="panel-intro"><h2>源服务器</h2></div>
+                <div class="submit-row">
+                    <div class="md-field">
+                        <label for="feed_server">地址</label>
+                        <input id="feed_server" class="md-input" type="text" placeholder="IP:端口，或完整 JSON 网址" />
+                    </div>
+                    <button class="md-btn md-btn-filled panel-action" type="button" onclick="saveFeed()">设置</button>
+                </div>
+                <div class="curtain-block">
+                    <div class="curtain-title">首页按钮</div>
+                    <div id="home_buttons" class="curtain-list"></div>
+                </div>
+                <button class="md-btn md-btn-tonal md-btn-full" type="button" onclick="showPanel(6)">Bilibili 过滤</button>
+                <button class="md-btn md-btn-tonal md-btn-full" type="button" onclick="showPanel(7)">幕布</button>
+                <button class="md-btn md-btn-tonal md-btn-full" type="button" onclick="showPanel(8)">字幕搜索</button>
+            </div>
             <!-- 本地 -->
             <div id="panel5" class="tab-panel">
                 <div class="md-card panel-content files-panel">
@@ -251,6 +269,142 @@
                             <button id="file_refresh" class="md-btn remote-icon-button file-refresh" type="button" onclick="listFile(currentRoot)" aria-label="重新整理" title="重新整理"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M17.65,6.35C16.2,4.9 14.21,4 12,4c-4.42,0 -7.99,3.58 -7.99,8s3.57,8 7.99,8c3.73,0 6.84,-2.55 7.73,-6h-2.08c-0.82,2.33 -3.04,4 -5.65,4 -3.31,0 -6,-2.69 -6,-6s2.69,-6 6,-6c1.66,0 3.14,0.69 4.22,1.78L13,11h7V4l-2.35,2.35z"/></svg></button>
                         </div>
                         <div id="file_list"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- 幕布 -->
+            <div id="panel7" class="tab-panel">
+                <div id="curtain_simple" class="panel-content">
+                    <button class="md-btn md-btn-tonal" type="button" onclick="showPanel(4)">返回</button>
+                    <div id="curtain_status" class="curtain-title">正在连接电视…</div>
+                    <div class="md-field">
+                        <input id="curtain_text" class="md-input" type="text" placeholder="输入要推送的文字" />
+                    </div>
+                    <button class="md-btn md-btn-filled md-btn-full" onclick="curtainText()">推送文字</button>
+                    <input id="curtain_push_file" type="file" accept="image/*" hidden />
+                    <button class="md-btn md-btn-tonal md-btn-full" onclick="curtainPick('push')">推送图片</button>
+                    <button class="md-btn md-btn-tonal md-btn-full" onclick="showCurtainPage('pushed')">已推送</button>
+                    <button class="md-btn md-btn-tonal md-btn-full" onclick="curtainClearText()">全部清除</button>
+                    <button class="md-btn md-btn-tonal md-btn-full" onclick="showCurtainPage('advanced')">高级设置</button>
+                </div>
+                <div id="curtain_pushed" class="panel-content curtain-hidden">
+                    <div class="curtain-title">正在滚动</div>
+                    <div id="curtain_pushes" class="curtain-list"></div>
+                    <button class="md-btn md-btn-tonal md-btn-full" onclick="clearChosenPushes()">删除所选</button>
+                    <button class="md-btn md-btn-tonal md-btn-full" onclick="curtainClearText()">全部清除</button>
+                    <button class="md-btn md-btn-tonal md-btn-full" onclick="showCurtainPage('simple')">返回</button>
+                </div>
+                <div id="curtain_advanced" class="panel-content curtain-hidden">
+                    <button class="md-btn md-btn-tonal" onclick="showCurtainPage('simple')">返回</button>
+                    <div class="curtain-block">
+                        <div class="curtain-title">背景色</div>
+                        <div class="curtain-row" id="curtain_colors"></div>
+                        <input id="curtain_color" class="md-input" type="color" value="#101114" />
+                    </div>
+                    <div class="curtain-block">
+                        <div class="curtain-title">背景图</div>
+                        <select id="curtain_image_fit" class="md-input">
+                            <option value="fit">完整显示</option>
+                            <option value="fill">铺满</option>
+                        </select>
+                        <input id="curtain_image_file" type="file" accept="image/*" hidden />
+                        <div class="curtain-row">
+                            <button class="md-btn md-btn-tonal" onclick="curtainPick('image')">上传图片</button>
+                            <button class="md-btn md-btn-tonal" onclick="curtainPost({do:'clearImage'})">去掉图片</button>
+                        </div>
+                    </div>
+                    <div class="curtain-block">
+                        <div class="curtain-title">背景视频</div>
+                        <select id="curtain_video_fit" class="md-input">
+                            <option value="fit">完整显示</option>
+                            <option value="fill">铺满</option>
+                        </select>
+                        <input id="curtain_video_file" type="file" accept="video/*" hidden />
+                        <div class="curtain-row">
+                            <button class="md-btn md-btn-tonal" onclick="curtainPick('video')">上传视频</button>
+                            <button class="md-btn md-btn-tonal" onclick="curtainPost({do:'clearVideo'})">去掉视频</button>
+                        </div>
+                    </div>
+                    <div class="curtain-block">
+                        <div class="curtain-title">声音</div>
+                        <select id="curtain_audio" class="md-input">
+                            <option value="video">视频原声</option>
+                            <option value="music">背景音乐</option>
+                        </select>
+                        <select id="curtain_music_mode" class="md-input">
+                            <option value="list">列表循环</option>
+                            <option value="single">单曲循环</option>
+                            <option value="shuffle">随机播放</option>
+                        </select>
+                        <input id="curtain_volume" type="range" min="0" max="100" value="80" />
+                        <input id="curtain_music_file" type="file" accept="audio/*" hidden />
+                        <div class="curtain-row">
+                            <button class="md-btn md-btn-tonal" onclick="curtainPick('music')">上传音乐</button>
+                            <button class="md-btn md-btn-tonal" onclick="curtainMusic('play')">播放</button>
+                            <button class="md-btn md-btn-tonal" onclick="curtainMusic('pause')">暂停</button>
+                            <button class="md-btn md-btn-tonal" onclick="curtainMusic('next')">下一首</button>
+                        </div>
+                        <div id="curtain_music" class="curtain-list"></div>
+                    </div>
+                    <div class="curtain-block">
+                        <div class="curtain-title">常驻文字</div>
+                        <input id="curtain_resident" class="md-input" type="text" placeholder="例如：生日快乐，留空则取消" />
+                        <div class="curtain-row">
+                            <input id="curtain_resident_size" class="md-input" type="number" min="24" max="96" value="56" placeholder="字号" />
+                            <input id="curtain_resident_seconds" class="md-input" type="number" min="0" max="3600" value="0" placeholder="秒，0 为一直显示" />
+                        </div>
+                        <div class="curtain-row">
+                            <input id="curtain_resident_color" type="color" value="#FFFFFF" />
+                            <label class="curtain-check"><input id="curtain_resident_stroke" type="checkbox" checked />描边</label>
+                            <button class="md-btn md-btn-filled" onclick="curtainResident()">设置</button>
+                        </div>
+                    </div>
+                    <div class="curtain-row">
+                        <button class="md-btn md-btn-tonal" onclick="curtainPost({do:'restore'})">恢复默认背景</button>
+                        <button class="md-btn md-btn-tonal" onclick="curtainPost({do:'clearCache'})">清空缓存</button>
+                    </div>
+                    <div id="curtain_cache" class="curtain-title"></div>
+                </div>
+            </div>
+            <!-- Bilibili 过滤 -->
+            <div id="panel6" class="tab-panel">
+                <div class="panel-content">
+                    <button class="md-btn md-btn-tonal" type="button" onclick="showPanel(4)">返回</button>
+                    <label class="md-switch-row">
+                        <span>启用过滤</span>
+                        <input id="bili_filter_on" class="md-switch" type="checkbox" />
+                    </label>
+                    <div class="md-field">
+                        <input id="bili_filter_words" class="md-input" type="text" placeholder="多个词用空格隔开，标题包含则不显示" />
+                    </div>
+                </div>
+            </div>
+            <!-- 字幕 -->
+            <div id="panel8" class="tab-panel">
+                <div class="panel-content">
+                    <button class="md-btn md-btn-tonal" type="button" onclick="showPanel(4)">返回</button>
+                    <div class="curtain-block">
+                        <div class="curtain-title">密钥</div>
+                        <div class="md-field">
+                            <input id="assrt_token" class="md-input" type="password" placeholder="粘贴 32 位密钥" autocomplete="off" />
+                        </div>
+                        <button class="md-btn md-btn-filled md-btn-full" type="button" onclick="saveAssrtToken()">保存</button>
+                        <div id="assrt_token_state" class="assrt-status"></div>
+                        <div id="assrt_token_status" class="assrt-status"></div>
+                        <a class="assrt-credit" href="https://assrt.net" target="_blank" rel="noopener">字幕服务由assrt.net提供</a>
+                    </div>
+                    <div class="curtain-block">
+                        <div class="curtain-title">搜索</div>
+                        <div class="md-field">
+                            <input id="assrt_q" class="md-input" type="text" placeholder="片名" />
+                        </div>
+                        <button class="md-btn md-btn-filled md-btn-full" type="button" onclick="searchAssrt()">搜索</button>
+                        <div id="assrt_search_status" class="assrt-status"></div>
+                    </div>
+                    <div class="curtain-block">
+                        <div class="curtain-title">结果</div>
+                        <div id="assrt_results" class="curtain-list"></div>
+                        <div id="assrt_result_status" class="assrt-status"></div>
                     </div>
                 </div>
             </div>

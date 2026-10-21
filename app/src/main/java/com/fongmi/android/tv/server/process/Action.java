@@ -4,15 +4,20 @@ import android.text.TextUtils;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Constant;
+import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.api.config.MxBoxFeedEndpoint;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Device;
 import com.fongmi.android.tv.bean.History;
 import com.fongmi.android.tv.bean.Keep;
 import com.fongmi.android.tv.bean.Vod;
+import com.fongmi.android.tv.bili.BiliTitleFilter;
 import com.fongmi.android.tv.event.CastEvent;
+import com.fongmi.android.tv.ui.custom.GlobalDanmaku;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.event.ServerEvent;
+import com.fongmi.android.tv.home.HomeButtons;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.server.Nano;
 import com.fongmi.android.tv.server.Server;
@@ -44,6 +49,9 @@ public class Action implements Process {
         Map<String, String> params = session.getParms();
         String param = params.get("do");
         if ("sync".equals(param)) return onSync(params);
+        if ("feed".equals(param)) return onFeed(params);
+        if ("biliFilter".equals(param)) return onBiliFilter(params);
+        if ("homeButtons".equals(param)) return onHomeButtons(params);
         if (!TextUtils.isEmpty(param)) doJob(param, params);
         return Nano.ok();
     }
@@ -54,11 +62,19 @@ public class Action implements Process {
             case "push" -> onPush(params);
             case "cast" -> onCast(params);
             case "search" -> onSearch(params);
+            case "bili" -> onBili(params);
             case "setting" -> onSetting(params);
             case "refresh" -> onRefresh(params);
             case "control" -> onControl(params);
             case "danmaku" -> onDanmaku(params);
         }
+    }
+
+    private Response onFeed(Map<String, String> params) {
+        String resolved = MxBoxFeedEndpoint.save(params.get("url"));
+        if (TextUtils.isEmpty(resolved)) return Nano.error("invalid feed");
+        App.post(() -> Notify.show(App.get().getString(R.string.mx_feed_saved, resolved)));
+        return Nano.ok(resolved);
     }
 
     private void onFile(Map<String, String> params) {
@@ -79,6 +95,34 @@ public class Action implements Process {
         String word = params.get("word");
         if (TextUtils.isEmpty(word)) return;
         ServerEvent.search(word);
+    }
+
+    private void onBili(Map<String, String> params) {
+        String word = params.get("word");
+        if (TextUtils.isEmpty(word)) return;
+        ServerEvent.bili(word);
+    }
+
+    private Response onBiliFilter(Map<String, String> params) {
+        boolean changed = false;
+        if (params.containsKey("enabled")) {
+            BiliTitleFilter.enabled("1".equals(params.get("enabled")) || "true".equals(params.get("enabled")));
+            changed = true;
+        }
+        if (params.containsKey("words")) {
+            BiliTitleFilter.words(params.get("words"));
+            changed = true;
+        }
+        if (changed) ServerEvent.biliFilter();
+        return Nano.ok(BiliTitleFilter.json());
+    }
+
+    private Response onHomeButtons(Map<String, String> params) {
+        if (params.containsKey("order") || params.containsKey("hidden")) {
+            HomeButtons.save(params.get("order"), params.get("hidden"));
+            ServerEvent.homeButtons();
+        }
+        return Nano.ok(HomeButtons.json());
     }
 
     private void onSetting(Map<String, String> params) {
@@ -121,9 +165,8 @@ public class Action implements Process {
 
     private void onDanmaku(Map<String, String> params) {
         String text = params.get("text");
-        PlaybackService service = Server.get().getService();
-        if (service == null || TextUtils.isEmpty(text)) return;
-        App.post(() -> service.player().sendDanmaku(text));
+        if (TextUtils.isEmpty(text)) return;
+        App.post(() -> GlobalDanmaku.show(text));
     }
 
     private void onCast(Map<String, String> params) {
