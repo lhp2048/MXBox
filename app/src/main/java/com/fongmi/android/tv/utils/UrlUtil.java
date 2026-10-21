@@ -53,4 +53,24 @@ public class UrlUtil {
         String host = host(url);
         return "127.0.0.1".equals(host) || "localhost".equals(host);
     }
+
+    public static String scheme(String url) {
+        return UriUtil.scheme(url);
+    }
+
+    public static String host(String url) {
+        if (TextUtils.isEmpty(url)) return "";
+        String host = Uri.parse(url).getHost();
+        return host == null ? "" : host;
+    }
+
+    public static String getName(String url) {
+        if (TextUtils.isEmpty(url)) return "";
+        String name = Uri.parse(url).getLastPathSegment();
+        if (TextUtils.isEmpty(name)) name = url;
+        int slash = name.lastIndexOf('/');
+        if (slash >= 0 && slash < name.length() - 1) name = name.substring(slash + 1);
+        int dot = name.lastIndexOf('.');
+        return dot > 0 ? name.substring(0, dot) : name;
+    }
 }

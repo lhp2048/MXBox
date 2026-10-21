@@ -158,7 +158,7 @@ public class PlayerManager implements ParseCallback {
     }
 
     public boolean isDiscMenuAvailable() {
-        return !isEmpty() && player.getDiscMenuState().availability == DiscMenuState.AVAILABILITY_AVAILABLE;
+        return false;
     }
 
     public boolean runMpvScript(MpvScripts.Item item) {
@@ -277,7 +277,7 @@ public class PlayerManager implements ParseCallback {
     }
 
     public boolean canPreloadNext() {
-        return PreloadSetting.isEnabled() && PreloadSetting.isNextEpisodeEnabled() && engine != null && engine.getType() == PlayerEngine.Type.EXO && !player.isCurrentMediaItemLive() && !player.getDiscMenuState().navigationPlaybackOngoing && (spec == null || !IsoDiscPreparation.isIso(MediaItemFactory.from(spec)));
+        return PreloadSetting.isEnabled() && PreloadSetting.isNextEpisodeEnabled() && engine != null && engine.getType() == PlayerEngine.Type.EXO && !player.isCurrentMediaItemLive() && (spec == null || !IsoDiscPreparation.isIso(MediaItemFactory.from(spec)));
     }
 
     public boolean isPortrait() {
@@ -1101,7 +1101,6 @@ public class PlayerManager implements ParseCallback {
             }
         }
 
-        @Override
         public void onDiscMenuStateChanged(@NonNull DiscMenuState state) {
             if (state.phase == DiscMenuState.PHASE_OPENING) {
                 App.removeCallbacks(runnable);

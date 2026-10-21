@@ -75,6 +75,12 @@ public class DLNARendererService extends AndroidUpnpServiceImpl implements Servi
     private Object dlnaOwner;
     private boolean bound;
 
+    private static volatile boolean registered;
+
+    public static boolean isRegistered() {
+        return registered;
+    }
+
     public static void start(Context context) {
         context.startService(new Intent(context, DLNARendererService.class));
     }
@@ -109,6 +115,7 @@ public class DLNARendererService extends AndroidUpnpServiceImpl implements Servi
         try {
             LocalDevice device = new LocalDevice(identity, type, details, new LocalService[]{avTransport, connManager, renderControl});
             upnpService.getRegistry().addDevice(device);
+            registered = true;
         } catch (Exception ignored) {
         }
     }
@@ -173,6 +180,7 @@ public class DLNARendererService extends AndroidUpnpServiceImpl implements Servi
 
     @Override
     public void onDestroy() {
+        registered = false;
         avTransportEvents.close();
         renderingControlEvents.close();
         unbindPlaybackService();

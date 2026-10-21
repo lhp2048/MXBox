@@ -108,9 +108,7 @@ public final class ExoUtil {
             this.audioProcessor = audioProcessor;
             this.secondaryTextOutput = secondaryTextOutput;
             this.libassPlaybackSession = libassPlaybackSession;
-            if (decoderManager != null) setDecoderManager(decoderManager);
             setEnableDecoderFallback(true);
-            setEnableSurfaceControlFrameRetention(true);
             experimentalSetEnableMediaCodecVideoRendererPrewarming(true);
             setExtensionRendererMode(EXTENSION_RENDERER_MODE_ON);
             setDolbyVisionOutputPolicy(DecodeSetting.getDolbyVisionOutputPolicy());

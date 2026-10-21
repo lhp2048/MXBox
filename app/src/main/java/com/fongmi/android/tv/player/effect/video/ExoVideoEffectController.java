@@ -23,24 +23,10 @@ public final class ExoVideoEffectController {
     }
 
     public void apply(ExoPlayer player, VideoEffectProfile profile) {
-        if (profile.isNoOp()) {
-            clear(player);
-            return;
-        }
-        VideoAdjustment adjustment = profile.toAdjustment();
-        colorTone.setAdjustment(adjustment);
-        detail.setAdjustment(adjustment);
-        if (!configured) {
-            player.setVideoEffects(effects);
-            configured = true;
-        } else if (!player.getPlayWhenReady()) {
-            player.setVideoEffects(VideoFrameProcessor.REDRAW);
-        }
+        if (profile.isNoOp()) clear(player);
     }
 
     public void clear(ExoPlayer player) {
-        if (!configured) return;
-        player.setVideoEffects(List.of());
         configured = false;
     }
 }

@@ -3,6 +3,7 @@ package com.fongmi.android.tv.player.mpv;
 import android.content.pm.PackageManager;
 
 import androidx.annotation.Nullable;
+import androidx.media3.common.C;
 import androidx.media3.common.Player;
 import androidx.media3.datasource.DataSource;
 import androidx.media3.datasource.ProgressiveIsoCache;
@@ -93,8 +94,7 @@ public final class MpvUtil {
     }
 
     public static MpvPlayer buildPlayer(Player.Listener listener) {
-        MpvPlayer player = new MpvPlayer.Builder(App.get()).setVideoDecoderMode(MpvDecoderMode.AUTO).setConfig(buildConfig()).build();
-        player.setSubtitleContentLoader(new SubtitleFileContent());
+        MpvPlayer player = new MpvPlayer.Builder(App.get()).setDecode(C.DECODE_HARDWARE).setConfig(buildConfig()).build();
         setPreferredTextLanguages(player);
         player.addListener(listener);
         return player;
@@ -131,7 +131,7 @@ public final class MpvUtil {
         File cacheDir = Path.mpvCache();
         File defaultFontsDirectory = ExternalFont.getDirectory();
         AndroidFontConfig.prepare();
-        MpvPlayerConfig.Builder builder = new MpvPlayerConfig.Builder().setDataSourceFactory(createDataSourceFactory()).setDefaultFontDirectories(defaultFontsDirectory, defaultFontsDirectory).addConfigDirectory(Path.mpv()).addAndroidDefaults(buildAndroidOptions(cacheDir));
+        MpvPlayerConfig.Builder builder = new MpvPlayerConfig.Builder().addAndroidFontConfig(defaultFontsDirectory, defaultFontsDirectory).addConfigDirectory(Path.mpv()).addAndroidDefaults(buildAndroidOptions(cacheDir));
         builder.addPreInitStringOption("proxy-url", "http://127.0.0.1:" + Proxy.getPort() + "/proxy?");
         builder.addTlsCaFileFromAsset(App.get(), ASSET_CA_FILE, Path.files(ASSET_CA_FILE)).addAndroidSubtitleOptions(App.get(), buildSubtitleOptions(font));
         if (PreloadSetting.isEnabled()) builder.addDiskCacheOptions(cacheDir, PreloadSetting.getTimeSeconds());
@@ -160,15 +160,9 @@ public final class MpvUtil {
 
     static MpvSubtitleOptions buildSubtitleOptions(@Nullable ExternalFont.Item font) {
         MpvSubtitleOptions.Builder builder = new MpvSubtitleOptions.Builder();
-        if (font != null) builder.setFontsDirectory(font.directory().getAbsolutePath());
         builder.setPosition(100.0);
-        builder.setVerticalOffset(SubtitleSetting.getPosition());
         builder.setScale(SubtitleSetting.getAppliedScale());
-        builder.setBitmapSubtitleBrightness(SubtitleSetting.getBitmapBrightness());
-        builder.setSecondarySubtitlePosition(100.0);
-        builder.setSecondaryVerticalOffset(100.0 - SubtitleSetting.getSecondaryPosition());
-        builder.setSecondaryAssStyleOverride(SubtitleSetting.isStyleForced());
-        if (font != null) builder.setFontFamily(font.familyName());
+        builder.setSecondarySubtitle(0, 100.0 - SubtitleSetting.getSecondaryPosition(), SubtitleSetting.isStyleForced());
         setCaptionStyle(builder);
         return builder.build();
     }
@@ -182,11 +176,8 @@ public final class MpvUtil {
                     SubtitleSetting.getEdgeColor(),
                     SubtitleSetting.getEdgeWidth(),
                     SubtitleSetting.getShadow());
-        } else if (SubtitleSetting.isSystemStyle()) {
-            builder.setSystemCaptionStyle();
         } else {
-            CaptionStyleCompat style = SubtitleSetting.getStyle();
-            builder.setDefaultStyle(style.foregroundColor, style.backgroundColor, style.edgeType, style.edgeColor, style.edgeWidth, style.shadowOffset);
+            builder.setSystemCaptionStyle();
         }
     }
 }

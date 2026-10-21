@@ -415,7 +415,7 @@ public class CurtainActivity extends BaseActivity implements CurtainHub.Host {
 
     private void showQr() {
         Server.get().start();
-        String address = Server.get().getAddress(7);
+        String address = Server.get().getPageAddress("7");
         binding.qrUrl.setText(address);
         binding.qrImage.setImageBitmap(QRCode.getBitmap(address, 240, 1));
         binding.qr.setVisibility(View.VISIBLE);

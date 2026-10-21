@@ -11,9 +11,6 @@ import androidx.media3.exoplayer.source.MergingMediaSource;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
 
-import com.fongmi.android.tv.player.engine.PlayerEngine;
-import com.fongmi.android.tv.player.exo.ExoUtil;
-
 import java.util.HashMap;
 
 public class BiliPlayback {
@@ -23,7 +20,8 @@ public class BiliPlayback {
     private final androidx.media3.exoplayer.ExoPlayer player;
 
     public BiliPlayback(Player.Listener listener) {
-        player = ExoUtil.buildPlayer(PlayerEngine.HARD, listener);
+        player = new androidx.media3.exoplayer.ExoPlayer.Builder(com.fongmi.android.tv.App.get()).build();
+        player.addListener(listener);
     }
 
     public androidx.media3.exoplayer.ExoPlayer player() {

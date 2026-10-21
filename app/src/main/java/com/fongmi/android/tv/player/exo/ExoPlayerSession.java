@@ -207,7 +207,6 @@ final class ExoPlayerSession {
             onPreloadReady(mediaItem);
         }
 
-        @Override
         public void onPreloadPaused(@NonNull MediaItem mediaItem) {
             onPreloadReady(mediaItem);
         }

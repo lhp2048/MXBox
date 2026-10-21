@@ -128,11 +128,11 @@ public class MxBoxSourceDialog extends BaseAlertDialog implements MxBoxSourceAda
     }
 
     private void onAddVod(View view) {
-        ConfigDialog.create().vod().userSource().show(requireActivity());
+        ConfigDialog.create().vod().show(requireActivity());
     }
 
     private void onAddLive(View view) {
-        ConfigDialog.create().live().userSource().show(requireActivity());
+        ConfigDialog.create().live().show(requireActivity());
     }
 
     private void onManage(View view) {

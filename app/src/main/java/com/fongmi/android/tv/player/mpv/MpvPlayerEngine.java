@@ -41,6 +41,8 @@ public class MpvPlayerEngine implements PlayerEngine, Player.Listener {
     private final Runnable updateLog = this::updateLogLevel;
     private final Runnable logListener = () -> App.post(updateLog);
 
+    private DecoderMode videoDecoderMode = DecoderMode.AUTO;
+
     public MpvPlayerEngine(Player.Listener listener) {
         List<MpvScripts.Item> scriptItems = MpvUtil.readScripts();
         this.player = MpvUtil.buildPlayer(listener);
@@ -55,7 +57,6 @@ public class MpvPlayerEngine implements PlayerEngine, Player.Listener {
     }
 
     private void updateLogLevel() {
-        player.setVerboseLoggingEnabled(LogSession.get().isRunning());
     }
 
     public static boolean isAvailable() {
@@ -74,7 +75,7 @@ public class MpvPlayerEngine implements PlayerEngine, Player.Listener {
 
     @Override
     public DiscMenuController getDiscMenuController() {
-        return player;
+        return null;
     }
 
     @Override
@@ -120,22 +121,22 @@ public class MpvPlayerEngine implements PlayerEngine, Player.Listener {
 
     @Override
     public SubtitleSelectionState getSubtitleSelectionState() {
-        return player.getSubtitleSelectionState();
+        return SubtitleSelectionState.EMPTY;
     }
 
     @Override
     public SubtitleContent getSubtitleContent(TrackSelectionOverride selection) {
-        return player.getSubtitleContentForSelection(selection);
+        return SubtitleContent.UNSUPPORTED;
     }
 
     @Override
     public SubtitleOffsets getSubtitleOffsets() {
-        return player.getSubtitleOffsets();
+        return new SubtitleOffsets(player.getTextOffsetMs(), 0);
     }
 
     @Override
     public void setSubtitleOffsets(SubtitleOffsets offsets) {
-        player.setSubtitleOffsets(offsets);
+        player.setTextOffsetMs(offsets.primaryMs);
     }
 
     @Override
@@ -145,35 +146,28 @@ public class MpvPlayerEngine implements PlayerEngine, Player.Listener {
 
     @Override
     public void setSubtitleContentEnabled(boolean enabled) {
-        player.setSubtitleContentEnabled(enabled);
     }
 
     @Override
     public boolean supportsSubtitleTranscript() {
-        return true;
+        return false;
     }
 
     @Override
     public boolean canRetrySubtitleContent(Format format) {
-        return player.canRetrySubtitleContent(format);
+        return false;
     }
 
     @Override
     public void retrySubtitleContent(Format format) {
-        player.retrySubtitleContent(format);
     }
 
     @Override
     public void setSecondarySubtitleSelection(@Nullable TrackSelectionOverride selection) {
-        int mode = SubtitleSetting.getSecondaryMode();
-        applySecondarySubtitleMode(mode);
-        if (mode != SubtitleSetting.SECONDARY_MODE_DEFAULT) player.setSecondaryTextTrackSelectionOverride(selection);
     }
 
     @Override
     public void restoreSecondarySubtitleSelection(@Nullable TrackSelectionOverride selection) {
-        player.setSecondaryTextTrackAutoSelectionEnabled(false);
-        player.setSecondaryTextTrackSelectionOverride(selection);
     }
 
     @Override
@@ -197,13 +191,14 @@ public class MpvPlayerEngine implements PlayerEngine, Player.Listener {
     @Nullable
     public DecoderMode getDecoderMode(@C.TrackType int trackType) {
         if (trackType != C.TRACK_TYPE_VIDEO) return null;
-        return player.getVideoDecoderMode().toCommonDecoderMode();
+        return videoDecoderMode;
     }
 
     @Override
     public void setDecoderMode(@C.TrackType int trackType, DecoderMode mode) {
         if (!getSupportedDecoderModes(trackType).contains(mode)) return;
-        player.setVideoDecoderMode(MpvDecoderMode.fromCommonDecoderMode(mode));
+        videoDecoderMode = mode;
+        player.setDecode(MpvDecoderMode.fromCommonDecoderMode(mode).toDecodeConstant());
     }
 
     @Override
@@ -215,7 +210,6 @@ public class MpvPlayerEngine implements PlayerEngine, Player.Listener {
     public boolean setMediaItem(PlaySpec spec, long startPositionMs) {
         effect.applyVideoEffect();
         effect.clearAudioEffect();
-        player.setDiscDataSourceFactory(ExoMediaSourceFactory.createDataSourceFactory(spec.getHeaders(), spec.getAuth()));
         MediaItem item = MediaItemFactory.from(spec);
         String url = item.localConfiguration.uri.toString();
         if (ConcatenatingUrl.matches(url)) item = item.buildUpon().setUri(ConcatenatingUrl.toEdl(url)).build();
@@ -242,7 +236,5 @@ public class MpvPlayerEngine implements PlayerEngine, Player.Listener {
     }
 
     private void applySecondarySubtitleMode(int mode) {
-        if (mode == SubtitleSetting.SECONDARY_MODE_DEFAULT) player.resetSecondaryTextTrackSelection();
-        else player.setSecondaryTextTrackAutoSelectionEnabled(mode == SubtitleSetting.SECONDARY_MODE_AUTO);
     }
 }

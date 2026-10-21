@@ -50,7 +50,6 @@ public final class MpvScriptSession {
     MpvScriptSession(MpvPlayer player, List<MpvScripts.Item> items) {
         this.player = player;
         this.handler = new Handler(player.getApplicationLooper());
-        player.setLogListener(LOG_LEVEL_ERROR, this::onLogMessage);
         reload(items, true, null);
     }
 
@@ -80,7 +79,6 @@ public final class MpvScriptSession {
         runners.clear();
         statuses.clear();
         startupScripts.clear();
-        player.setLogListener(LOG_LEVEL_ERROR, null);
     }
 
     void reload(List<MpvScripts.Item> items, boolean reloadStartupScripts, String reloadButtonId) {
@@ -117,9 +115,8 @@ public final class MpvScriptSession {
             if (!item.automatic || !item.enabled) continue;
             addStartupScript(item, generation, scripts);
         }
-        if (!player.setStartupScripts(scripts)) {
+        if (!scripts.isEmpty()) {
             for (MpvScripts.Item item : startupScripts.values()) updateStatus(item, State.ERROR, ResUtil.getString(R.string.mpv_script_unavailable));
-            Notify.show(R.string.mpv_script_unavailable);
         }
     }
 
@@ -157,22 +154,7 @@ public final class MpvScriptSession {
     }
 
     private Runner createRunner(MpvScripts.Item item) {
-        Runner runner = new Runner(item, Long.toString(++actionGeneration));
-        runners.put(item.id, runner);
-        try {
-            File runnerFile = MpvScripts.prepareRunner(item, runner.generation);
-            if (!player.loadScript(runnerFile.getAbsolutePath(), runner::onLoaded)) {
-                runners.remove(item.id);
-                runner.release(false);
-                return null;
-            }
-        } catch (IOException e) {
-            runners.remove(item.id);
-            runner.release(false);
-            updateStatus(item, State.ERROR, e.getMessage());
-            return null;
-        }
-        return runner;
+        return null;
     }
 
     private MpvScripts.Item currentItem(String id) throws JSONException {
@@ -198,24 +180,11 @@ public final class MpvScriptSession {
     }
 
     private JSONObject startupData(MpvScripts.Item item) {
-        String value = player.getScriptData(item.statusKey());
-        if (value == null) return null;
-        try {
-            JSONObject data = new JSONObject(value);
-            return data.optString("generation").equals(Long.toString(startupGeneration)) ? data : null;
-        } catch (JSONException e) {
-            updateStatus(item, State.ERROR, e.getMessage());
-            return null;
-        }
+        return null;
     }
 
-    List<String> bindings() throws JSONException {
-        TreeSet<String> names = new TreeSet<>();
-        String value = player.getInputBindings();
-        if (value == null) return new ArrayList<>();
-        JSONArray array = new JSONArray(value);
-        for (int i = 0; i < array.length(); i++) addBinding(names, array.getJSONObject(i));
-        return new ArrayList<>(names);
+    List<String> bindings() {
+        return new ArrayList<>();
     }
 
     private void addBinding(Set<String> names, JSONObject entry) {
@@ -259,7 +228,7 @@ public final class MpvScriptSession {
                 }
                 return;
             }
-            if (released || runners.get(item.id) != this) player.unloadScript(clientId);
+            if (released || runners.get(item.id) != this) return;
             else this.clientId = clientId;
         }
 
@@ -267,7 +236,7 @@ public final class MpvScriptSession {
             released = true;
             cancelPending();
             handler.removeCallbacks(this);
-            if (unload && clientId > 0) player.unloadScript(clientId);
+            if (unload && clientId > 0) clientId = 0;
         }
 
         @Override
@@ -303,10 +272,8 @@ public final class MpvScriptSession {
             Notify.show(item.title + ": " + ResUtil.getString(R.string.mpv_script_timeout));
         }
 
-        private JSONObject readStatus() throws JSONException {
-            String value = player.getScriptData(item.statusKey());
-            JSONObject status = value == null ? null : new JSONObject(value);
-            return status != null && !generation.equals(status.optString("generation")) ? null : status;
+        private JSONObject readStatus() {
+            return null;
         }
 
         private void updateCompletion(JSONObject status) throws JSONException {
@@ -330,16 +297,10 @@ public final class MpvScriptSession {
                 return false;
             }
             completed = status.getInt("completed");
-            if (!player.runScriptBinding(item.binding())) {
-                cancelPending();
-                updateStatus(item, State.ERROR, ResUtil.getString(R.string.mpv_script_unavailable));
-                Notify.show(R.string.mpv_script_unavailable);
-                return false;
-            }
-            running = true;
-            updateStatus(item, State.RUNNING, null);
-            pending--;
-            return true;
+            cancelPending();
+            updateStatus(item, State.ERROR, ResUtil.getString(R.string.mpv_script_unavailable));
+            Notify.show(R.string.mpv_script_unavailable);
+            return false;
         }
 
         private void cancelPending() {

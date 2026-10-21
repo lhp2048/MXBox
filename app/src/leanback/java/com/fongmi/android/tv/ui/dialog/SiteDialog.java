@@ -93,7 +93,6 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
     }
 
     private void updateDepotProgress() {
-        SiteDialogDepotHelper.bind(binding.progressPanel, binding.progressBar, binding.progressText, requireContext());
     }
 
     private void refreshSites() {

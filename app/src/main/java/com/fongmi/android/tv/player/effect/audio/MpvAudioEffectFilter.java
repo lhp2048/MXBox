@@ -45,7 +45,7 @@ public final class MpvAudioEffectFilter {
     }
 
     private static void appendLoudness(MpvAudioFilter.Builder builder, boolean enabled) {
-        if (enabled) builder.addDynamicNormalization("loudness", 0.125, 4.0);
+        if (enabled) builder.addLoudnessNormalization("loudness", 0.125, 4.0, 1.0);
     }
 
     private static void appendStability(MpvAudioFilter.Builder builder, AudioEffectParameters config) {

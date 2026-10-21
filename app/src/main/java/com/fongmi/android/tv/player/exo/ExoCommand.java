@@ -37,18 +37,8 @@ public final class ExoCommand {
         Player player = manager.getPlayer();
         if (player == null || manager.isEmpty()) return Result.UNAVAILABLE;
         switch (parsed.property) {
-            case "video-scale-x", "video-scale-y" -> {
-                if (playerView == null || playerView.getPlayer() != player || playerView.getVideoSurfaceView() == null) return Result.UNAVAILABLE;
-                VideoTransform current = playerView.getVideoTransform();
-                boolean horizontal = parsed.property.equals("video-scale-x");
-                float scale = (float) propertyValue(parsed, horizontal ? current.scaleX : current.scaleY);
-                playerView.setVideoTransform(new VideoTransform(horizontal ? scale : current.scaleX,
-                        horizontal ? current.scaleY : scale, current.panX, current.panY));
-            }
-            case "video-aspect-override" -> {
-                if (playerView == null || playerView.getPlayer() != player || playerView.getVideoSurfaceView() == null) return Result.UNAVAILABLE;
-                float aspectRatio = (float) propertyValue(parsed, playerView.getVideoAspectRatioOverride());
-                playerView.setVideoAspectRatioOverride(aspectRatio);
+            case "video-scale-x", "video-scale-y", "video-aspect-override" -> {
+                return Result.UNAVAILABLE;
             }
             case "seek" -> {
                 if (!player.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) || !player.isCurrentMediaItemSeekable()) return Result.UNAVAILABLE;

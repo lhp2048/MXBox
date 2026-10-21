@@ -224,8 +224,9 @@ public class VodConfig extends BaseConfig {
             setSites(new ArrayList<>(merged.values()));
             Map<String, Site> saved = Site.findAll().stream().collect(Collectors.toMap(Site::getKey, Function.identity()));
             getSites().forEach(site -> site.sync(saved.get(site.getKey())));
-            setHome(primary, getSites().stream().filter(item -> item.getKey().equals(primary.getHome())).findFirst().orElse(getSites().get(0)), false);
-            primary.update();
+            Config selected = primary;
+            setHome(selected, getSites().stream().filter(item -> item.getKey().equals(selected.getHome())).findFirst().orElse(getSites().get(0)), false);
+            selected.update();
             Config.delete(feedConfig.getUrl());
             DepotLoadEvent.done(merged.size());
         } catch (Throwable e) {

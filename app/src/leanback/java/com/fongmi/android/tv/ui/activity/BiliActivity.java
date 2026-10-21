@@ -1274,7 +1274,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     }
 
     private void showSearchQr() {
-        binding.searchQrImage.setImageBitmap(QRCode.getBitmap(Server.get().getAddress(1) + "&target=bili", 220, 1));
+        binding.searchQrImage.setImageBitmap(QRCode.getBitmap(Server.get().getPageAddress("1") + "&target=bili", 220, 1));
         show(binding.searchQr);
         binding.searchQr.bringToFront();
         bumpIdle();

@@ -307,7 +307,7 @@ public class ExoPlayerEngine implements PlayerEngine, AnalyticsListener {
 
     @Override
     public void bindPlayerView(PlayerView playerView) {
-        playerView.setBackendPlayer(player);
+        playerView.setPlayer(player);
         subtitles.bindPlayerView(playerView);
     }
 
@@ -333,12 +333,12 @@ public class ExoPlayerEngine implements PlayerEngine, AnalyticsListener {
 
     @Override
     public SubtitleOffsets getSubtitleOffsets() {
-        return player.getSubtitleOffsets();
+        return new SubtitleOffsets(player.getTextOffsetMs(), 0);
     }
 
     @Override
     public void setSubtitleOffsets(SubtitleOffsets offsets) {
-        player.setSubtitleOffsets(offsets);
+        player.setTextOffsetMs(offsets.primaryMs);
     }
 
     @Override
