@@ -119,6 +119,12 @@ public class UpdateService extends Service implements Download.Callback {
     }
 
     @Override
+    public void progress(long total, long downloaded, long speed) {
+        if (finished) return;
+        Updater.get().transfer(total, downloaded, speed);
+    }
+
+    @Override
     public void progress(int progress) {
         if (finished) return;
         long now = SystemClock.elapsedRealtime();

@@ -5,7 +5,7 @@ import org.json.JSONObject;
 
 public class Github {
 
-    private static final String REPO = "FongMi/Release";
+    private static final String REPO = "lhp2048/MXBox";
 
     public static String getReleases() {
         return "https://api.github.com/repos/" + REPO + "/releases?per_page=100";
@@ -49,22 +49,37 @@ public class Github {
     }
 
     public static String getNotes(String body, String flavor) {
-        String heading = "leanback".equals(flavor) ? "# 電視版 " : "# 手機版 ";
+        boolean tv = "leanback".equals(flavor);
         StringBuilder notes = new StringBuilder();
         boolean hasSections = false;
         boolean selected = false;
         for (String line : body.split("\\r?\\n")) {
             String text = line.trim();
-            if (text.startsWith("# 電視版 ") || text.startsWith("# 手機版 ")) {
+            if (isTvHeading(text) || isMobileHeading(text)) {
                 hasSections = true;
-                selected = text.startsWith(heading);
+                selected = tv ? isTvHeading(text) : isMobileHeading(text);
             } else if (text.startsWith("# ")) {
                 selected = false;
             } else if (selected && !text.isEmpty()) {
                 appendNote(notes, text);
             }
         }
-        return hasSections ? notes.toString() : body.trim();
+        if (hasSections) return notes.toString();
+        notes.setLength(0);
+        for (String line : body.split("\\r?\\n")) {
+            String text = line.trim();
+            if (text.startsWith("#")) text = text.replaceFirst("^#+\\s*", "");
+            if (!text.isEmpty()) appendNote(notes, text);
+        }
+        return notes.toString();
+    }
+
+    private static boolean isTvHeading(String text) {
+        return text.startsWith("# 電視版") || text.startsWith("# 电视版");
+    }
+
+    private static boolean isMobileHeading(String text) {
+        return text.startsWith("# 手機版") || text.startsWith("# 手机版");
     }
 
     private static void appendNote(StringBuilder notes, String text) {

@@ -78,6 +78,7 @@ import com.google.common.collect.Lists;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -156,6 +157,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     @Override
     protected void initEvent() {
         mBinding.title.setListener(this);
+        mBinding.update.setOnClickListener(v -> Updater.get().open(this));
         mBinding.recycler.addOnChildViewHolderSelectedListener(new OnChildViewHolderSelectedListener() {
             @Override
             public void onChildViewHolderSelected(@NonNull RecyclerView parent, @Nullable RecyclerView.ViewHolder child, int position, int subposition) {
@@ -527,6 +529,30 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         if (KeyUtil.isMenuKey(event)) showDialog();
         if (KeyUtil.isActionDown(event) & KeyUtil.isDownKey(event) && getCurrentFocus() == mBinding.title) return mBinding.recycler.getChildAt(0).requestFocus();
         return super.dispatchKeyEvent(event);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Updater.get().watch(this::onUpdateState);
+    }
+
+    private void onUpdateState(boolean available, int progress, boolean downloading, boolean ready) {
+        mBinding.update.setVisibility(available ? View.VISIBLE : View.GONE);
+        if (!available) return;
+        boolean showProgress = downloading && progress >= 0 && progress < 100;
+        mBinding.updateProgress.setVisibility(showProgress ? View.VISIBLE : View.GONE);
+        String text = getString(R.string.update_available);
+        if (ready) text = getString(R.string.update_install);
+        else if (showProgress) text = NumberFormat.getPercentInstance().format(progress / 100.0);
+        if (showProgress) mBinding.updateProgress.setText(text);
+        mBinding.update.setContentDescription(text);
+    }
+
+    @Override
+    protected void onStop() {
+        Updater.get().watch(null);
+        super.onStop();
     }
 
     @Override

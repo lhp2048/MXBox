@@ -11,6 +11,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.widget.TooltipCompat;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
 import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.R;
@@ -59,6 +60,10 @@ public class ConfigDialog extends BaseAlertDialog {
 
     public void show(Fragment fragment) {
         show(fragment.getChildFragmentManager(), null);
+    }
+
+    public void show(FragmentActivity activity) {
+        show(activity.getSupportFragmentManager(), null);
     }
 
     @Override

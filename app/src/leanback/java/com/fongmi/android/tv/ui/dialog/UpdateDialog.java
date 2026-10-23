@@ -1,6 +1,8 @@
 package com.fongmi.android.tv.ui.dialog;
 
 import android.os.Bundle;
+import android.text.format.Formatter;
+import android.view.View;
 
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewbinding.ViewBinding;
@@ -89,5 +91,22 @@ public class UpdateDialog extends BaseAlertDialog {
         binding.confirm.setContentDescription(downloading && !verifying ? text + " · " + getString(R.string.pause) : text);
         binding.confirm.setEnabled(!verifying);
         binding.cancel.setText(downloading ? R.string.update_background : R.string.dialog_negative);
+        boolean showProgress = downloading || ready;
+        binding.progress.setVisibility(showProgress ? View.VISIBLE : View.GONE);
+        if (progress < 0) {
+            binding.progress.setIndeterminate(true);
+        } else {
+            binding.progress.setIndeterminate(false);
+            binding.progress.setProgress(ready ? 100 : progress);
+        }
+        if (!downloading) binding.detail.setVisibility(View.GONE);
+    }
+
+    public void setTransfer(long total, long downloaded, long speed) {
+        if (binding == null || total <= 0) return;
+        String size = Formatter.formatFileSize(requireContext(), downloaded) + " / " + Formatter.formatFileSize(requireContext(), total);
+        String remain = Updater.transferText(total, downloaded, speed);
+        binding.detail.setText(remain.isEmpty() ? size : size + "\n" + remain);
+        binding.detail.setVisibility(View.VISIBLE);
     }
 }

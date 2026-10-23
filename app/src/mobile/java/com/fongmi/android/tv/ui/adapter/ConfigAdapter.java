@@ -43,6 +43,12 @@ public class ConfigAdapter extends RecyclerView.Adapter<ConfigAdapter.ViewHolder
         return this;
     }
 
+    public ConfigAdapter setItems(List<Config> items) {
+        mItems = items == null ? List.of() : items;
+        notifyDataSetChanged();
+        return this;
+    }
+
     private Config getCurrentConfig(int type) {
         return switch (type) {
             case 0 -> VodConfig.get().getConfig();

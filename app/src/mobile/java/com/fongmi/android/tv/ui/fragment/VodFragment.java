@@ -221,8 +221,8 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     }
 
     private void cancelHomeLoad() {
-        VodConfig.get().cancelLoad();
-        LiveConfig.get().cancelLoad();
+        VodConfig.get().cancel();
+        LiveConfig.get().cancel();
         mViewModel.cancelHome();
     }
 

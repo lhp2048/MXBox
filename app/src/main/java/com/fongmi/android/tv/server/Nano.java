@@ -2,6 +2,7 @@ package com.fongmi.android.tv.server;
 
 import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.bean.Device;
+import com.fongmi.android.tv.utils.Util;
 import com.fongmi.android.tv.server.impl.Process;
 import com.fongmi.android.tv.server.process.Action;
 import com.fongmi.android.tv.server.process.Assrt;
@@ -121,6 +122,7 @@ public class Nano extends NanoHTTPD {
     @Override
     public Response serve(IHTTPSession session) {
         String url = session.getUri().trim();
+        if (Util.isMobile() && !isMobileLocal(url)) return error(Response.Status.NOT_FOUND, "");
         Map<String, String> files = new HashMap<>();
         if (session.getMethod() == Method.POST) parse(session, files);
         if (url.startsWith("/tvbus")) return ok(LiveConfig.getResp());
@@ -146,6 +148,10 @@ public class Nano extends NanoHTTPD {
             session.parseBody(files);
         } catch (Exception ignored) {
         }
+    }
+
+    private static boolean isMobileLocal(String url) {
+        return url.startsWith("/proxy") || url.startsWith("/parse") || url.startsWith("/cache") || url.startsWith("/image/") || url.startsWith("/file") || url.startsWith("/tvbus");
     }
 
     private Response getAssets(String path) {

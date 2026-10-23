@@ -10,7 +10,6 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.Lifecycle;
 
 import com.fongmi.android.tv.service.UpdateService;
-import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.dialog.UpdateDialog;
 import com.fongmi.android.tv.utils.ApkCache;
 import com.fongmi.android.tv.utils.FileUtil;
@@ -39,17 +38,26 @@ import java.util.List;
 
 public class Updater {
 
+    public interface Watcher {
+        void onUpdate(boolean available, int progress, boolean downloading, boolean ready);
+    }
+
     private WeakReference<FragmentActivity> activity = new WeakReference<>(null);
     private WeakReference<UpdateDialog> dialog = new WeakReference<>(null);
+    private WeakReference<Watcher> watcher = new WeakReference<>(null);
     private UpdatePackage update;
     private String desc;
     private File ready;
     private boolean checking;
+    private boolean force;
     private boolean downloading;
     private boolean paused;
     private boolean modulesChecked;
     private String moduleNotice;
     private int progress;
+    private long total;
+    private long downloaded;
+    private long speed;
 
     private static class Loader {
         static final Updater INSTANCE = new Updater();
@@ -67,19 +75,35 @@ public class Updater {
             modulesChecked = true;
             Task.execute(this::checkModules);
         }
-        if (force) {
-            Notify.show(R.string.update_check);
-            Setting.putUpdate(true);
-        }
-        if (!Setting.getUpdate()) return;
+        if (force) Notify.show(R.string.update_check);
         if (downloading || paused || ready != null) {
             if (force) show(activity);
+            notifyWatcher();
             return;
         }
         this.activity = new WeakReference<>(activity);
-        if (checking || dialog.get() != null || activity.getSupportFragmentManager().findFragmentByTag(UpdateDialog.TAG) != null) return;
+        if (force || !checking) this.force = force;
+        if (checking || dialog.get() != null || activity.getSupportFragmentManager().findFragmentByTag(UpdateDialog.TAG) != null) {
+            if (force && update != null) show(activity);
+            return;
+        }
         checking = true;
         Task.execute(this::checkRelease);
+    }
+
+    public void watch(Watcher watcher) {
+        this.watcher = new WeakReference<>(watcher);
+        if (watcher != null) watcher.onUpdate(update != null, progress, downloading, ready != null);
+    }
+
+    public void open(FragmentActivity activity) {
+        if (update == null) return;
+        if (downloading) {
+            Notify.show(R.string.update_running);
+            return;
+        }
+        this.activity = new WeakReference<>(activity);
+        show(activity);
     }
 
     private void checkModules() {
@@ -129,7 +153,7 @@ public class Updater {
             String filename = BuildConfig.FLAVOR + "-" + abi + ".apk";
             JSONObject release = Github.getUpdate(new JSONArray(OkHttp.string(Github.getReleases())), BuildConfig.VERSION_NAME, filename);
             if (release == null) {
-                App.post(() -> checking = false);
+                App.post(this::onReleaseMissing);
                 return;
             }
             prepareRelease(release, filename);
@@ -142,7 +166,9 @@ public class Updater {
     private void prepareRelease(JSONObject release, String filename) throws IOException {
         String tag = release.optString("tag_name");
         String name = tag.startsWith("v") ? tag.substring(1) : tag;
-        String desc = Github.getNotes(release.optString("body"), BuildConfig.FLAVOR);
+        String notes = Github.getNotes(release.optString("body"), BuildConfig.FLAVOR);
+        if (notes.isEmpty()) notes = ResUtil.getString(R.string.update_notes_empty);
+        String desc = notes;
         JSONObject asset = Github.getAsset(release, filename);
         UpdatePackage update = new UpdatePackage(name, asset.optString("browser_download_url"), asset.optLong("size"), asset.isNull("digest") ? "" : asset.optString("digest"));
         File cached = verifyCachedApk(update);
@@ -154,7 +180,17 @@ public class Updater {
         this.update = update;
         this.desc = desc;
         ready = cached;
+        notifyWatcher();
         show(activity.get());
+    }
+
+    private void onReleaseMissing() {
+        checking = false;
+        if (downloading || paused || ready != null) return;
+        update = null;
+        desc = null;
+        notifyWatcher();
+        if (force) Notify.show(R.string.update_latest);
     }
 
     private File verifyCachedApk(UpdatePackage update) throws IOException {
@@ -184,6 +220,7 @@ public class Updater {
         }
         this.dialog = new WeakReference<>(dialog);
         dialog.setState(downloading, progress, ready != null);
+        dialog.setTransfer(total, downloaded, speed);
     }
 
     public void detach(UpdateDialog dialog) {
@@ -203,6 +240,9 @@ public class Updater {
         }
         downloading = true;
         paused = false;
+        total = update.size();
+        downloaded = 0;
+        speed = 0;
         progress(0);
         try {
             UpdateService.start(update);
@@ -212,7 +252,6 @@ public class Updater {
     }
 
     public void onCancel(View view) {
-        if (!downloading && !paused) Setting.putUpdate(false);
         dismiss();
     }
 
@@ -246,12 +285,22 @@ public class Updater {
         this.progress = progress;
         UpdateDialog current = dialog.get();
         if (current != null) current.setState(downloading, progress, ready != null);
+        notifyWatcher();
+    }
+
+    public void transfer(long total, long downloaded, long speed) {
+        this.total = total;
+        this.downloaded = downloaded;
+        this.speed = speed;
+        UpdateDialog current = dialog.get();
+        if (current != null) current.setTransfer(total, downloaded, speed);
     }
 
     public void error(String msg) {
         downloading = false;
         paused = false;
         Notify.show(msg);
+        notifyWatcher();
         dismiss();
     }
 
@@ -259,8 +308,15 @@ public class Updater {
         downloading = false;
         paused = false;
         ready = file;
+        progress = 100;
+        notifyWatcher();
         UpdateDialog current = dialog.get();
         if (current != null && current.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) install(file);
+    }
+
+    private void notifyWatcher() {
+        Watcher current = watcher.get();
+        if (current != null) current.onUpdate(update != null, progress, downloading, ready != null);
     }
 
     private void install(File file) {
