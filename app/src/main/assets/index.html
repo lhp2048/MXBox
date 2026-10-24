@@ -2,7 +2,8 @@
 <html lang="zh-Hant">
 
 <head>
-    <title data-i18n="title">影視</title>
+    <title data-i18n="title">MXBox</title>
+    <link rel="icon" href="mxbox_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
@@ -34,9 +35,9 @@
     </defs></svg>
     <div id="app">
         <header class="app-header">
-            <span class="page-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 3H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5v2h8v-2h5a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 14H3V5h18v12z"/></svg></span>
+            <span class="page-mark" aria-hidden="true"><img src="mxbox_logo.png" alt=""></span>
             <div class="app-title">
-                <h1 data-i18n="title">影視</h1>
+                <h1 data-i18n="title">MXBox</h1>
                 <button class="md-btn device-info-button" type="button" onclick="openDialog('deviceInfoDialog')" aria-haspopup="dialog" aria-controls="deviceInfoDialog" aria-describedby="device_status" data-i18n-label="deviceInfo" aria-label="裝置資訊" title="裝置資訊"><span id="device_status" role="status" data-i18n="deviceConnecting">連線中</span></button>
             </div>
             <div class="app-header-actions">
@@ -140,15 +141,53 @@
                 </div>
             </div>
             <div id="panel3" class="tab-panel">
-                <div class="md-tabs input-tabs" role="tablist" aria-labelledby="media_tab_subtitles media_tab_danmaku">
-                    <button id="media_tab_subtitles" class="md-btn" type="button" role="tab" aria-selected="true" aria-controls="media_subtitles" onclick="showMedia('subtitles')" data-i18n="subtitles">字幕</button>
+                <div class="md-tabs input-tabs media-tabs" role="tablist">
+                    <button id="media_tab_subtitles" class="md-btn" type="button" role="tab" aria-selected="true" aria-controls="media_subtitles" onclick="showMedia('subtitles')" data-i18n="localSubtitle">本地字幕</button>
+                    <button id="media_tab_online" class="md-btn" type="button" role="tab" aria-selected="false" aria-controls="media_online" tabindex="-1" onclick="showMedia('online')" data-i18n="onlineSubtitle">在线字幕</button>
                     <button id="media_tab_danmaku" class="md-btn" type="button" role="tab" aria-selected="false" aria-controls="media_danmaku" tabindex="-1" onclick="showMedia('danmaku')" data-i18n="danmaku">彈幕</button>
                 </div>
                 <p id="media_status" class="panel-hint" role="status" aria-live="polite" data-i18n="mediaPlaybackRequired">請先播放影片。</p>
-                <section id="media_subtitles" class="md-card panel-content" role="tabpanel" aria-labelledby="media_tab_subtitles">
-                    <div class="panel-intro"><h2 data-i18n="subtitles">字幕</h2></div>
-                    <input id="subtitle_uploader" type="file" accept=".srt,.ssa,.ass" hidden />
-                    <button id="remote_subtitle" class="md-btn md-btn-outlined" type="button" disabled><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="icons.svg#upload"/></svg><span data-i18n="localFile">本機檔案</span></button>
+                <section id="media_subtitles" class="input-page" role="tabpanel" aria-labelledby="media_tab_subtitles">
+                    <section class="md-card panel-content">
+                        <input id="subtitle_uploader" type="file" accept=".srt,.ssa,.ass" hidden />
+                        <button id="remote_subtitle" class="md-btn md-btn-outlined" type="button" disabled><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="icons.svg#upload"/></svg><span data-i18n="localFile">本機檔案</span></button>
+                    </section>
+                </section>
+                <section id="media_online" class="input-page" role="tabpanel" aria-labelledby="media_tab_online" hidden>
+                    <div id="assrt_page_search">
+                        <section class="md-card panel-content assrt-search">
+                            <div class="submit-row">
+                                <div class="md-field">
+                                    <input id="assrt_q" class="md-input" type="text" placeholder="片名" aria-label="片名" />
+                                </div>
+                                <button class="md-btn md-btn-filled panel-action" type="button" onclick="searchAssrt()">搜索</button>
+                                <button class="md-btn md-btn-outlined md-icon-button" type="button" onclick="showAssrtPage('token')" aria-label="字幕设置" title="字幕设置"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg></button>
+                            </div>
+                            <p id="assrt_search_status" class="panel-hint" role="status"></p>
+                            <div id="assrt_results" class="curtain-list"></div>
+                            <p id="assrt_result_status" class="panel-hint" role="status"></p>
+                        </section>
+                    </div>
+                    <div id="assrt_page_token" class="settings-subpage curtain-hidden">
+                        <header class="settings-subpage-header">
+                            <div class="page-heading"><h1>字幕设置</h1></div>
+                            <button class="md-btn md-btn-outlined md-icon-button" type="button" onclick="showAssrtPage('search')" aria-label="返回在线字幕" title="返回在线字幕"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="icons.svg#back"/></svg></button>
+                        </header>
+                        <section class="md-card panel-content">
+                            <div class="panel-intro">
+                                <h2>射手网密钥</h2>
+                                <p>保存在这台电视上，不放进安装包。在线字幕还没保存密钥时，使用当前点播配置里的 assrt。</p>
+                            </div>
+                            <div class="md-field">
+                                <label for="assrt_token">密钥</label>
+                                <input id="assrt_token" class="md-input" type="password" placeholder="粘贴 32 位密钥" autocomplete="off" />
+                            </div>
+                            <p id="assrt_token_state" class="panel-hint" role="status"></p>
+                            <p id="assrt_token_status" class="panel-hint" role="status"></p>
+                            <button class="md-btn md-btn-filled" type="button" onclick="saveAssrtToken()">保存</button>
+                            <a class="assrt-credit" href="https://assrt.net" target="_blank" rel="noopener">字幕服务由assrt.net提供</a>
+                        </section>
+                    </div>
                 </section>
                 <div id="media_danmaku" class="input-page" role="tabpanel" aria-labelledby="media_tab_danmaku" hidden>
                     <section class="md-card panel-content">
@@ -193,6 +232,7 @@
             </div>
             <!-- 設定 -->
             <div id="panel4" class="tab-panel">
+                <div id="settings_main">
                 <div class="md-card panel-content">
                     <div class="panel-intro"><h2 data-i18n="settings">設定</h2><p data-i18n="settingHint">傳送至裝置目前的輸入視窗。</p></div>
                     <div class="setting-fields">
@@ -208,6 +248,21 @@
                     <button id="action_setting" onclick="setting()" class="md-btn md-btn-filled panel-action"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="icons.svg#send"/></svg><span data-i18n="send">發送</span></button>
                 </div>
                 <div class="md-card panel-content">
+                    <div class="panel-intro"><h2>源服务器</h2></div>
+                    <div class="submit-row">
+                        <div class="md-field">
+                            <label for="feed_server">地址</label>
+                            <input id="feed_server" class="md-input" type="text" placeholder="IP:端口，或完整 JSON 网址" />
+                        </div>
+                        <button class="md-btn md-btn-filled panel-action" type="button" onclick="saveFeed()">设置</button>
+                    </div>
+                </div>
+                <div class="md-card panel-content">
+                    <button class="panel-link" type="button" onclick="showSettingsPage('buttons')">
+                        <span class="panel-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z"/></svg></span>
+                        <span class="panel-link-text"><span>首页按钮</span></span>
+                        <svg class="select-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="icons.svg#chevron"/></svg>
+                    </button>
                     <a class="panel-link" href="logs.html">
                         <span class="panel-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 3h16v18H4V3zm2 2v14h12V5H6zm2 3h8v2H8V8zm0 4h8v2H8v-2zm0 4h5v2H8v-2z"/></svg></span>
                         <span class="panel-link-text"><span data-i18n="logTitle">應用日誌</span></span>
@@ -219,24 +274,20 @@
                         <svg class="select-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="icons.svg#chevron"/></svg>
                     </a>
                 </div>
-            </div>
-
-            <div class="md-card panel-content">
-                <div class="panel-intro"><h2>源服务器</h2></div>
-                <div class="submit-row">
-                    <div class="md-field">
-                        <label for="feed_server">地址</label>
-                        <input id="feed_server" class="md-input" type="text" placeholder="IP:端口，或完整 JSON 网址" />
-                    </div>
-                    <button class="md-btn md-btn-filled panel-action" type="button" onclick="saveFeed()">设置</button>
                 </div>
-                <div class="curtain-block">
-                    <div class="curtain-title">首页按钮</div>
-                    <div id="home_buttons" class="curtain-list"></div>
+                <div id="settings_buttons" class="settings-subpage curtain-hidden">
+                    <header class="settings-subpage-header">
+                        <div class="page-heading"><h1>首页按钮</h1></div>
+                        <button class="md-btn md-btn-outlined md-icon-button" type="button" onclick="showSettingsPage('main')" aria-label="返回设置" title="返回设置"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="icons.svg#back"/></svg></button>
+                    </header>
+                    <section class="md-card panel-content">
+                        <div class="panel-intro">
+                            <h2>显示和顺序</h2>
+                            <p>勾选后显示在电视首页。列表从上到下，对应首页从左到右。上移、下移调整顺序。没有直播源时，直播不会出现。</p>
+                        </div>
+                        <div id="home_buttons"></div>
+                    </section>
                 </div>
-                <button class="md-btn md-btn-tonal md-btn-full" type="button" onclick="showPanel(6)">Bilibili 过滤</button>
-                <button class="md-btn md-btn-tonal md-btn-full" type="button" onclick="showPanel(7)">幕布</button>
-                <button class="md-btn md-btn-tonal md-btn-full" type="button" onclick="showPanel(8)">字幕搜索</button>
             </div>
             <!-- 本地 -->
             <div id="panel5" class="tab-panel">
@@ -275,7 +326,6 @@
             <!-- 幕布 -->
             <div id="panel7" class="tab-panel">
                 <div id="curtain_simple" class="panel-content">
-                    <button class="md-btn md-btn-tonal" type="button" onclick="showPanel(4)">返回</button>
                     <div id="curtain_status" class="curtain-title">正在连接电视…</div>
                     <div class="md-field">
                         <input id="curtain_text" class="md-input" type="text" placeholder="输入要推送的文字" />
@@ -361,7 +411,7 @@
                     </div>
                     <div class="curtain-row">
                         <button class="md-btn md-btn-tonal" onclick="curtainPost({do:'restore'})">恢复默认背景</button>
-                        <button class="md-btn md-btn-tonal" onclick="curtainPost({do:'clearCache'})">清空缓存</button>
+                        <button class="md-btn md-btn-tonal" onclick="curtainPost({do:'clearCache'})">全部清空</button>
                     </div>
                     <div id="curtain_cache" class="curtain-title"></div>
                 </div>
@@ -369,42 +419,12 @@
             <!-- Bilibili 过滤 -->
             <div id="panel6" class="tab-panel">
                 <div class="panel-content">
-                    <button class="md-btn md-btn-tonal" type="button" onclick="showPanel(4)">返回</button>
                     <label class="md-switch-row">
                         <span>启用过滤</span>
                         <input id="bili_filter_on" class="md-switch" type="checkbox" />
                     </label>
                     <div class="md-field">
                         <input id="bili_filter_words" class="md-input" type="text" placeholder="多个词用空格隔开，标题包含则不显示" />
-                    </div>
-                </div>
-            </div>
-            <!-- 字幕 -->
-            <div id="panel8" class="tab-panel">
-                <div class="panel-content">
-                    <button class="md-btn md-btn-tonal" type="button" onclick="showPanel(4)">返回</button>
-                    <div class="curtain-block">
-                        <div class="curtain-title">密钥</div>
-                        <div class="md-field">
-                            <input id="assrt_token" class="md-input" type="password" placeholder="粘贴 32 位密钥" autocomplete="off" />
-                        </div>
-                        <button class="md-btn md-btn-filled md-btn-full" type="button" onclick="saveAssrtToken()">保存</button>
-                        <div id="assrt_token_state" class="assrt-status"></div>
-                        <div id="assrt_token_status" class="assrt-status"></div>
-                        <a class="assrt-credit" href="https://assrt.net" target="_blank" rel="noopener">字幕服务由assrt.net提供</a>
-                    </div>
-                    <div class="curtain-block">
-                        <div class="curtain-title">搜索</div>
-                        <div class="md-field">
-                            <input id="assrt_q" class="md-input" type="text" placeholder="片名" />
-                        </div>
-                        <button class="md-btn md-btn-filled md-btn-full" type="button" onclick="searchAssrt()">搜索</button>
-                        <div id="assrt_search_status" class="assrt-status"></div>
-                    </div>
-                    <div class="curtain-block">
-                        <div class="curtain-title">结果</div>
-                        <div id="assrt_results" class="curtain-list"></div>
-                        <div id="assrt_result_status" class="assrt-status"></div>
                     </div>
                 </div>
             </div>
@@ -451,31 +471,29 @@
             </div>
         </div>
         <nav class="md-nav-bar">
-            <button id="tab2" class="md-nav-item" type="button" aria-pressed="false" aria-controls="panel2" onclick="showPanel(2)">
-                <div class="md-nav-indicator"><svg aria-hidden="true" class="md-nav-icon" viewBox="0 0 960 960"><use href="#remote-icon-play"/></svg></div>
-                <span class="md-nav-label" data-i18n="remoteTitle">播放</span>
-            </button>
             <button id="tab1" class="md-nav-item active" type="button" aria-pressed="true" aria-controls="panel1" onclick="showPanel(1)">
                 <div class="md-nav-indicator"><svg aria-hidden="true" class="md-nav-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></div>
                 <span class="md-nav-label" data-i18n="input">輸入</span>
             </button>
-            <button id="tab3" class="md-nav-item" type="button" aria-pressed="false" aria-controls="panel3" onclick="showPanel(3)">
-                <div class="md-nav-indicator">
-                    <svg aria-hidden="true" class="md-nav-icon" viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+            <div class="md-nav-slot">
+                <button id="moreToggle" class="md-nav-more" type="button" onclick="toggleMore(event)" aria-expanded="false" aria-controls="moreMenu" aria-haspopup="menu" data-i18n-label="navMore" aria-label="更多" title="更多"><svg class="md-nav-more-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16l8-10 8 10z"/></svg></button>
+                <div id="moreMenu" class="md-more-menu" role="menu">
+                    <button class="md-more-item current" type="button" role="menuitem" data-panel="2" onclick="pickMiddle(2)" data-i18n="remoteTitle">播放</button>
+                    <button class="md-more-item" type="button" role="menuitem" data-panel="3" onclick="pickMiddle(3)" data-i18n="subtitles">字幕</button>
+                    <button class="md-more-item" type="button" role="menuitem" data-panel="5" onclick="pickMiddle(5)" data-i18n="local">本地</button>
+                    <button class="md-more-item" type="button" role="menuitem" data-panel="6" onclick="pickMiddle(6)" data-i18n="biliNav">Bilibili</button>
+                    <button class="md-more-item" type="button" role="menuitem" data-panel="7" onclick="pickMiddle(7)" data-i18n="curtainNav">幕布</button>
                 </div>
-                <span class="md-nav-label" data-i18n="subtitles">字幕</span>
-            </button>
+                <button id="tabMid" class="md-nav-item" type="button" aria-pressed="false" onclick="showMiddle()">
+                    <div class="md-nav-indicator"><svg id="midIcon" aria-hidden="true" class="md-nav-icon" viewBox="0 0 960 960"><use href="#remote-icon-play"/></svg></div>
+                    <span id="midLabel" class="md-nav-label" data-i18n="remoteTitle">播放</span>
+                </button>
+            </div>
             <button id="tab4" class="md-nav-item" type="button" aria-pressed="false" aria-controls="panel4" onclick="showPanel(4)">
                 <div class="md-nav-indicator">
                     <svg aria-hidden="true" class="md-nav-icon" viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19.43 12.98c.04-.32.07-.64.07-.98 0-.34-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.09-.16-.26-.25-.44-.25-.06 0-.12.01-.17.03l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.06-.02-.12-.03-.18-.03-.17 0-.34.09-.43.25l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98 0 .33.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.09.16.26.25.44.25.06 0 .12-.01.17-.03l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.06.02.12.03.18.03.17 0 .34-.09.43-.25l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zm-1.98-1.71c.04.31.05.52.05.73 0 .21-.02.43-.05.73l-.14 1.13.89.7 1.08.84-.7 1.21-1.27-.51-1.04-.42-.9.68c-.43.32-.84.56-1.25.73l-1.06.43-.16 1.13-.2 1.35h-1.4l-.19-1.35-.16-1.13-1.06-.43c-.43-.18-.83-.41-1.23-.71l-.91-.7-1.06.43-1.27.51-.7-1.21 1.08-.84.89-.7-.14-1.13c-.03-.31-.05-.54-.05-.74s.02-.43.05-.73l.14-1.13-.89-.7-1.08-.84.7-1.21 1.27.51 1.04.42.9-.68c.43-.32.84-.56 1.25-.73l1.06-.43.16-1.13.2-1.35h1.39l.19 1.35.16 1.13 1.06.43c.43.18.83.41 1.23.71l.91.7 1.06-.43 1.27-.51.7 1.21-1.07.85-.89.7.14 1.13zM12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
                 </div>
                 <span class="md-nav-label" data-i18n="settings">設定</span>
-            </button>
-            <button id="tab5" class="md-nav-item" type="button" aria-pressed="false" aria-controls="panel5" onclick="showPanel(5)">
-                <div class="md-nav-indicator">
-                    <svg aria-hidden="true" class="md-nav-icon" viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M9.17 6l2 2H20v10H4V6h5.17M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-                </div>
-                <span class="md-nav-label" data-i18n="local">本地</span>
             </button>
         </nav>
     </div>

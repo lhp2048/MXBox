@@ -1,5 +1,6 @@
 package com.fongmi.android.tv.server.process;
 
+import android.app.Activity;
 import android.text.TextUtils;
 
 import com.fongmi.android.tv.App;
@@ -71,6 +72,7 @@ public class Action implements Process {
     }
 
     private Response onFeed(Map<String, String> params) {
+        if (!params.containsKey("url")) return Nano.ok(MxBoxFeedEndpoint.get());
         String resolved = MxBoxFeedEndpoint.save(params.get("url"));
         if (TextUtils.isEmpty(resolved)) return Nano.error("invalid feed");
         App.post(() -> Notify.show(App.get().getString(R.string.mx_feed_saved, resolved)));
@@ -94,7 +96,9 @@ public class Action implements Process {
     private void onSearch(Map<String, String> params) {
         String word = params.get("word");
         if (TextUtils.isEmpty(word)) return;
-        ServerEvent.search(word);
+        Activity current = App.activity();
+        if (current != null && "BiliActivity".equals(current.getClass().getSimpleName())) ServerEvent.bili(word);
+        else ServerEvent.search(word);
     }
 
     private void onBili(Map<String, String> params) {

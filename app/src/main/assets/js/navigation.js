@@ -1,12 +1,15 @@
 const WEB_TABS = {
     search: {panel: 1, title: 'search'}, push: {panel: 1, title: 'push'},
-    play: {panel: 2, title: 'remoteTitle'}, subtitles: {panel: 3, title: 'subtitles'}, danmaku: {panel: 3, title: 'danmaku'},
-    settings: {panel: 4, title: 'settings'}, files: {panel: 5, title: 'local'}
+    play: {panel: 2, title: 'remoteTitle'}, subtitles: {panel: 3, title: 'localSubtitle'}, online: {panel: 3, title: 'onlineSubtitle'}, danmaku: {panel: 3, title: 'danmaku'},
+    settings: {panel: 4, title: 'settings'}, files: {panel: 5, title: 'local'},
+    bili: {panel: 6, title: 'biliNav'}, curtain: {panel: 7, title: 'curtainNav'}, assrt: {panel: 3, title: 'onlineSubtitle'}
 };
 
+const WEB_TAB_NUMBERS = {1: 'search', 2: 'push', 3: 'danmaku', 4: 'settings', 5: 'files', 6: 'bili', 7: 'curtain', 8: 'assrt'};
+
 function webRoute(search) {
-    const params = new URLSearchParams(search), tab = params.get('tab');
-    const name = Object.hasOwn(WEB_TABS, tab) ? tab : 'search';
+    const params = new URLSearchParams(search), raw = params.get('tab');
+    const name = Object.hasOwn(WEB_TABS, raw) ? raw : WEB_TAB_NUMBERS[raw] || 'search';
     return {tab: name, panel: WEB_TABS[name].panel, path: name === 'files' ? params.get('path') || '' : ''};
 }
 

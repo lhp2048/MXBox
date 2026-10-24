@@ -558,6 +558,15 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
         return webView != null && webView.isVideoPlaying();
     }
 
+    public boolean blocksCurtainSaver() {
+        if (isWebPlaybackActive() && !webView.isPlaybackPaused()) return true;
+        if (mService == null) return false;
+        Player player = player().getPlayer();
+        if (player == null) return false;
+        int state = player.getPlaybackState();
+        return player.getPlayWhenReady() && state != Player.STATE_IDLE && state != Player.STATE_ENDED;
+    }
+
     protected boolean hasActivePlaybackSession() {
         return isWebPlaybackActive() || (isPlaybackCurrent() && player().hasPlaySpec());
     }
@@ -814,7 +823,6 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
 
     private void hidePlayerViewForWebPlayback() {
         PlayerView playerView = getPlayerView();
-        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         View shutter = playerView.findViewById(androidx.media3.ui.R.id.exo_shutter);
         if (shutter != null) shutter.setVisibility(View.VISIBLE);
         playerView.setPlayer(null);
@@ -1047,9 +1055,7 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
     private void updateKeepScreenOn(boolean isPlaying) {
         int flag = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
         boolean screenOn = (getWindow().getAttributes().flags & flag) != 0;
-        boolean keepScreenOn = isPlaying || isDiscMenuActive();
-        if (keepScreenOn && !screenOn) getWindow().addFlags(flag);
-        else if (!keepScreenOn && !isBuffering() && screenOn) getWindow().clearFlags(flag);
+        if ((isPlaying || isDiscMenuActive()) && !screenOn) getWindow().addFlags(flag);
     }
 
     @Override
@@ -1155,7 +1161,6 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
         public void onPlayingChanged(@NonNull BrowserWebView view, boolean isPlaying) {
             if (webView != view) return;
             if (isPlaying) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             PlaybackActivity.this.onPlayingChanged(isPlaying);
         }
 

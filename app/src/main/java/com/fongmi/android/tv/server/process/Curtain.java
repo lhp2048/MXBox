@@ -66,8 +66,14 @@ public class Curtain implements Process {
                     postText(params);
                     return state();
                 }
-                case "restore" -> CurtainStore.restore();
-                case "clearCache" -> CurtainStore.clearCache();
+                case "restore" -> {
+                    CurtainStore.restore();
+                    onMain(() -> { if (CurtainHub.host() != null) CurtainHub.host().clearText(); });
+                }
+                case "clearCache" -> {
+                    CurtainStore.clearCache();
+                    onMain(() -> { if (CurtainHub.host() != null) CurtainHub.host().clearText(); });
+                }
                 case "upload" -> upload(params, files);
                 default -> { return text(Response.Status.BAD_REQUEST, "无法识别的指令"); }
             }

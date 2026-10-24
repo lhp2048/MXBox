@@ -292,12 +292,16 @@ public final class CurtainStore {
         File dir = dir();
         File[] children = dir.listFiles();
         if (children != null) for (File child : children) if (!"state.json".equals(child.getName())) child.delete();
+        store.color = DEFAULT_COLOR;
         store.image = "";
         store.video = "";
+        store.imageFit = FIT;
+        store.videoFit = FIT;
         store.music.clear();
         store.musicIndex = 0;
         store.musicPlaying = false;
         store.audio = AUDIO_VIDEO;
+        store.resident = "";
         save();
     }
 

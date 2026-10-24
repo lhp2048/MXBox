@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.util.TypedValue;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,6 +27,7 @@ import androidx.media3.ui.AspectRatioFrameLayout;
 import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.curtain.CurtainClock;
 import com.fongmi.android.tv.curtain.CurtainHub;
 import com.fongmi.android.tv.curtain.CurtainStore;
 import com.fongmi.android.tv.databinding.ActivityCurtainBinding;
@@ -44,6 +46,8 @@ import java.util.Random;
 
 public class CurtainActivity extends BaseActivity implements CurtainHub.Host {
 
+    private static final String EXTRA_SAVER = "saver";
+
     private ActivityCurtainBinding binding;
     private ExoPlayer videoPlayer;
     private ExoPlayer musicPlayer;
@@ -52,7 +56,9 @@ public class CurtainActivity extends BaseActivity implements CurtainHub.Host {
     private String shownImage = "";
     private String musicKey = "";
     private boolean suppressMusicEnd;
+    private boolean started;
     private boolean timedResident;
+    private boolean saver;
     private int musicFailures;
     private int fadeGen;
     private Bitmap imageBitmap;
@@ -65,10 +71,25 @@ public class CurtainActivity extends BaseActivity implements CurtainHub.Host {
     private final Runnable hideResident = () -> {
         timedResident = false;
         applyResident();
+        applyClock();
+    };
+    private final Runnable clockTick = new Runnable() {
+        @Override
+        public void run() {
+            if (!started || isFinishing() || binding.clock.getVisibility() != View.VISIBLE) return;
+            renderClock();
+            binding.clock.postDelayed(this, 1000L - System.currentTimeMillis() % 1000L);
+        }
     };
 
     public static void start(Activity activity) {
         activity.startActivity(new Intent(activity, CurtainActivity.class));
+    }
+
+    public static void startSaver(Activity activity) {
+        Intent intent = new Intent(activity, CurtainActivity.class);
+        intent.putExtra(EXTRA_SAVER, true);
+        activity.startActivity(intent);
     }
 
     @Override
@@ -83,6 +104,7 @@ public class CurtainActivity extends BaseActivity implements CurtainHub.Host {
 
     @Override
     protected void initView(Bundle savedInstanceState) {
+        saver = getIntent().getBooleanExtra(EXTRA_SAVER, false);
         Server.get().start();
         PlaybackService service = Server.get().getService();
         if (service != null) service.player().pause();
@@ -140,6 +162,8 @@ public class CurtainActivity extends BaseActivity implements CurtainHub.Host {
     @Override
     protected void onStart() {
         super.onStart();
+        started = true;
+        applyClock();
         if (videoPlayer == null || isFinishing()) return;
         if (!shownVideo.isEmpty() && !shownVideo.equals(failedVideo)) videoPlayer.play();
         applyMusic();
@@ -148,6 +172,8 @@ public class CurtainActivity extends BaseActivity implements CurtainHub.Host {
 
     @Override
     protected void onStop() {
+        started = false;
+        binding.clock.removeCallbacks(clockTick);
         if (videoPlayer != null) videoPlayer.pause();
         binding.texts.removeCallbacks(tick);
         if (musicPlayer != null) {
@@ -180,7 +206,20 @@ public class CurtainActivity extends BaseActivity implements CurtainHub.Host {
     }
 
     @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        if (saver && event.getAction() == MotionEvent.ACTION_DOWN) {
+            finish();
+            return true;
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
+    @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (saver && event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (event.getRepeatCount() == 0) finish();
+            return true;
+        }
         if (event.getAction() != KeyEvent.ACTION_DOWN) return super.dispatchKeyEvent(event);
         if (event.getKeyCode() == KeyEvent.KEYCODE_BACK && binding.qr.getVisibility() == View.VISIBLE) {
             hideQr();
@@ -197,6 +236,10 @@ public class CurtainActivity extends BaseActivity implements CurtainHub.Host {
 
     @Override
     protected void onBackInvoked() {
+        if (saver) {
+            finish();
+            return;
+        }
         if (binding.qr.getVisibility() == View.VISIBLE) hideQr();
         else super.onBackInvoked();
     }
@@ -208,7 +251,24 @@ public class CurtainActivity extends BaseActivity implements CurtainHub.Host {
         applyImage();
         applyVideo();
         applyResident();
+        applyClock();
         applyMusic();
+    }
+
+    private void applyClock() {
+        boolean show = CurtainStore.imageName().isEmpty() && CurtainStore.videoName().isEmpty() && CurtainStore.resident().isEmpty() && !timedResident;
+        binding.clock.setVisibility(show ? View.VISIBLE : View.GONE);
+        binding.clock.removeCallbacks(clockTick);
+        if (!show) return;
+        renderClock();
+        if (started) binding.clock.postDelayed(clockTick, 1000L - System.currentTimeMillis() % 1000L);
+    }
+
+    private void renderClock() {
+        CurtainClock.Face face = CurtainClock.now();
+        binding.clockTime.setText(face.time);
+        binding.clockSolar.setText(face.solar);
+        binding.clockLunar.setText(face.lunar);
     }
 
     @Override
@@ -243,6 +303,7 @@ public class CurtainActivity extends BaseActivity implements CurtainHub.Host {
         if (text == null || text.trim().isEmpty()) {
             timedResident = false;
             binding.resident.setVisibility(View.GONE);
+            applyClock();
             return;
         }
         binding.resident.setText(text.trim());
@@ -253,6 +314,7 @@ public class CurtainActivity extends BaseActivity implements CurtainHub.Host {
         binding.resident.setShadowLayer(ResUtil.dp2px(3), 0, 0, 0xCC000000);
         binding.resident.setVisibility(View.VISIBLE);
         if (seconds > 0) binding.resident.postDelayed(hideResident, seconds * 1000L);
+        applyClock();
     }
 
     @Override

@@ -609,23 +609,88 @@ function warnToast(msg) {
     }, 3500);
 }
 
+const MIDDLE = {
+    2: {key: 'remoteTitle', viewBox: '0 0 960 960', html: '<use href="#remote-icon-play"/>'},
+    3: {key: 'subtitles', viewBox: '0 0 24 24', html: '<path d="M0 0h24v24H0V0z" fill="none"/><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>'},
+    5: {key: 'local', viewBox: '0 0 24 24', html: '<path d="M0 0h24v24H0V0z" fill="none"/><path d="M9.17 6l2 2H20v10H4V6h5.17M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>'},
+    6: {key: 'biliNav', viewBox: '0 0 24 24', html: '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>'},
+    7: {key: 'curtainNav', viewBox: '0 0 24 24', html: '<path d="M4 3h16v3H4zm1 4h6v13H5zm8 0h6v13h-6z"/>'}
+};
+let middlePanel = 2;
+let curtainTimer = null;
+let curtainReady = false;
+const CURTAIN_COLORS = ['101114', '000000', 'FFFFFF', '8B1E3F', '1B4332', '1D3557', 'C45C26', 'F4D35E'];
+
+function renderMiddle() {
+    const item = MIDDLE[middlePanel];
+    const icon = document.getElementById('midIcon');
+    const label = document.getElementById('midLabel');
+    if (!item || !icon || !label) return;
+    icon.setAttribute('viewBox', item.viewBox);
+    icon.innerHTML = item.html;
+    label.textContent = t(item.key);
+}
+
+function setNavPressed(id, pressed) {
+    const tab = document.getElementById(id);
+    if (!tab) return;
+    tab.classList.toggle('active', pressed);
+    tab.setAttribute('aria-pressed', String(pressed));
+}
+
+function showMiddle() {
+    showPanel(middlePanel);
+}
+
+function toggleMore(event) {
+    event.stopPropagation();
+    const menu = document.getElementById('moreMenu');
+    const open = !menu.classList.contains('open');
+    menu.classList.toggle('open', open);
+    document.getElementById('moreToggle').classList.toggle('open', open);
+    document.getElementById('moreToggle').setAttribute('aria-expanded', String(open));
+}
+
+function closeMore() {
+    const menu = document.getElementById('moreMenu');
+    const toggle = document.getElementById('moreToggle');
+    if (menu) menu.classList.remove('open');
+    if (toggle) {
+        toggle.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+    }
+}
+
+function pickMiddle(id) {
+    showPanel(id);
+}
+
 function showPanel(id, navigate = true) {
     activePanel = id;
+    if (MIDDLE[id]) middlePanel = id;
     for (let i = 1; i <= 8; i++) {
         const panel = document.getElementById('panel' + i);
         if (panel) panel.classList.toggle('active', i === id);
-        const tab = document.getElementById('tab' + i);
-        if (tab) {
-            tab.classList.toggle('active', i === id);
-            tab.setAttribute('aria-pressed', String(i === id));
-        }
     }
+    setNavPressed('tab1', id === 1);
+    setNavPressed('tab4', id === 4);
+    setNavPressed('tabMid', id === middlePanel);
+    renderMiddle();
+    document.querySelectorAll('.md-more-item').forEach(item => {
+        item.classList.toggle('current', Number(item.dataset.panel) === middlePanel);
+    });
+    closeMore();
     document.dispatchEvent(new Event('panelchange'));
-    if (id === 4) loadHomeButtons();
+    if (id === 4) {
+        showSettingsPage('main');
+        loadFeed();
+    }
+    if (id === 3 && activeMedia === 'online') {
+        showAssrtPage('search');
+        loadAssrt();
+    }
     if (id === 6) loadBiliFilter();
-    if (id === 8) loadAssrt();
     if (typeof watchCurtain === 'function') watchCurtain(id === 7);
-    if (id > 5) return;
     if (navigate) {
         updateNavigation();
         if (id === 5 && document.getElementById('file_list').innerHTML === '') listFile(currentRoot);
@@ -643,19 +708,25 @@ function showInput(type, navigate = true) {
     if (navigate && activePanel === 1) updateNavigation();
 }
 
+const MEDIA_TABS = ['subtitles', 'online', 'danmaku'];
+
 function showMedia(type, navigate = true) {
     activeMedia = type;
-    for (const name of ['subtitles', 'danmaku']) {
+    for (const name of MEDIA_TABS) {
         const button = document.getElementById('media_tab_' + name);
         button.setAttribute('aria-selected', String(name === type));
         button.tabIndex = name === type ? 0 : -1;
         document.getElementById('media_' + name).hidden = name !== type;
     }
+    if (type === 'online') {
+        showAssrtPage('search');
+        if (activePanel === 3) loadAssrt();
+    }
     if (navigate && activePanel === 3) updateNavigation();
 }
 
 function setNavigation(tab, path, replace) {
-    document.title = t(WEB_TABS[tab].title) + ' · ' + t('title');
+    document.title = 'MXBox · ' + t(WEB_TABS[tab].title);
     if (replace || history.state?.tab !== tab || history.state?.path !== path) history[replace ? 'replaceState' : 'pushState']({tab, path}, '', webPageUrl(tab, path));
     const params = new URLSearchParams({from: tab});
     if (tab === 'files' && path) params.set('path', path);
@@ -670,7 +741,7 @@ function updateNavigation(replace = false) {
 function restoreNavigation() {
     const route = webRoute(window.location.search);
     showInput(route.panel === 1 ? route.tab : activeInput, false);
-    showMedia(route.panel === 3 ? route.tab : activeMedia, false);
+    showMedia(route.panel === 3 ? (route.tab === 'danmaku' ? 'danmaku' : route.tab === 'online' || route.tab === 'assrt' ? 'online' : 'subtitles') : activeMedia, false);
     showPanel(route.panel, false);
     const path = route.panel === 5 ? fileBusy ? currentRoot : route.path : '';
     setNavigation(route.tab, path, true);
@@ -678,6 +749,22 @@ function restoreNavigation() {
 }
 
 restoreNavigation();
+document.addEventListener('click', event => {
+    if (event.target.closest('#moreMenu') || event.target.closest('#moreToggle')) return;
+    closeMore();
+});
+
+function showSettingsPage(name) {
+    document.getElementById('settings_main').classList.toggle('curtain-hidden', name !== 'main');
+    document.getElementById('settings_buttons').classList.toggle('curtain-hidden', name !== 'buttons');
+    if (name === 'buttons') loadHomeButtons();
+}
+
+function showAssrtPage(name) {
+    document.getElementById('assrt_page_search').classList.toggle('curtain-hidden', name !== 'search');
+    document.getElementById('assrt_page_token').classList.toggle('curtain-hidden', name !== 'token');
+    if (name === 'token') loadAssrtToken();
+}
 
 function loadHomeButtons() {
     $.get('/action', { do: 'homeButtons' }, function (text) {
@@ -693,20 +780,23 @@ function renderHomeButtons(items) {
     box.innerHTML = '';
     items.forEach((item, index) => {
         const row = document.createElement('div');
-        row.className = 'curtain-track';
+        row.className = 'library-row home-button-row';
         const label = document.createElement('label');
-        label.className = 'curtain-check';
+        label.className = 'home-button-name';
         const check = document.createElement('input');
         check.type = 'checkbox';
         check.checked = !item.hidden;
+        check.setAttribute('aria-label', '显示' + item.label);
         check.onchange = () => {
             items[index].hidden = !check.checked;
             saveHomeButtons(items);
         };
+        const name = document.createElement('span');
+        name.textContent = item.label;
         label.appendChild(check);
-        label.appendChild(document.createTextNode(item.label));
+        label.appendChild(name);
         const actions = document.createElement('span');
-        actions.className = 'curtain-row';
+        actions.className = 'home-button-actions';
         actions.appendChild(homeMoveButton('上移', index > 0, () => moveHomeButton(items, index, -1)));
         actions.appendChild(homeMoveButton('下移', index < items.length - 1, () => moveHomeButton(items, index, 1)));
         row.appendChild(label);
@@ -718,7 +808,7 @@ function renderHomeButtons(items) {
 function homeMoveButton(text, enabled, action) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'md-btn md-btn-tonal';
+    button.className = 'md-btn md-btn-outlined';
     button.textContent = text;
     button.disabled = !enabled;
     button.onclick = action;
@@ -747,11 +837,19 @@ function saveHomeButtons(items) {
     });
 }
 
+function loadFeed() {
+    $.get('/action', { do: 'feed' }, function (text) {
+        $('#feed_server').val((text || '').trim());
+    });
+}
+
 function saveFeed() {
     const url = $('#feed_server').val().trim();
     if (!url) return;
     $.post('/action', { do: 'feed', url: url }).done(function (text) {
-        warnToast(text || '已设置');
+        const saved = (text || '').trim();
+        if (saved) $('#feed_server').val(saved);
+        warnToast(saved || '已设置');
     }).fail(function () {
         warnToast('设置失败');
     });
@@ -789,20 +887,6 @@ function saveBiliFilter() {
         warnToast('保存失败');
     });
 }
-
-const MIDDLE = {
-    2: { label: '推送', icon: 'M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3zM8 13h2.55v3h2.9v-3H16l-4-4z' },
-    3: { label: '弹幕', icon: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z' },
-    5: { label: '本地', icon: 'M9.17 6l2 2H20v10H4V6h5.17M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z' },
-    6: { label: 'Bilibili', icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z' },
-    7: { label: '幕布', icon: 'M4,3h16v3H4zM5,7h6v13H5zM13,7h6v13h-6z' },
-    8: { label: '字幕', icon: 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 12h4v2H4v-2zm10 6H4v-2h10v2zm6 0h-4v-2h4v2zm0-4H10v-2h10v2z' }
-};
-let middlePanel = 2;
-let curtainTimer = null;
-let curtainReady = false;
-
-const CURTAIN_COLORS = ['101114', '000000', 'FFFFFF', '8B1E3F', '1B4332', '1D3557', 'C45C26', 'F4D35E'];
 
 function watchCurtain(on) {
     if (curtainTimer) {
@@ -1028,12 +1112,15 @@ function assrtData(data) {
     return data || {};
 }
 
-function loadAssrt() {
+function loadAssrtToken() {
     $.get('/assrt', { do: 'state' }).done(function (data) {
         const body = assrtData(data);
         $('#assrt_token').val('');
         $('#assrt_token_state').text(body.set ? '已设置' : '');
     });
+}
+
+function loadAssrtPlaying() {
     $.get('/assrt', { do: 'playing' }).done(function (data) {
         const body = assrtData(data);
         const title = (body.title || '').trim();
@@ -1044,6 +1131,10 @@ function loadAssrt() {
         }
         $('#assrt_q').val(episode ? title + ' ' + episode : title);
     });
+}
+
+function loadAssrt() {
+    loadAssrtPlaying();
 }
 
 function saveAssrtToken() {
@@ -1178,10 +1269,11 @@ $(function () {
         showInput(type);
         document.getElementById('input_tab_' + type).focus();
     });
-    $('#media_tab_subtitles, #media_tab_danmaku').on('keydown', function (event) {
+    $('#media_tab_subtitles, #media_tab_online, #media_tab_danmaku').on('keydown', function (event) {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault();
-        const type = event.key === 'Home' ? 'subtitles' : event.key === 'End' ? 'danmaku' : this.id === 'media_tab_subtitles' ? 'danmaku' : 'subtitles';
+        const index = MEDIA_TABS.indexOf(this.id.slice('media_tab_'.length));
+        const type = event.key === 'Home' ? MEDIA_TABS[0] : event.key === 'End' ? MEDIA_TABS[MEDIA_TABS.length - 1] : MEDIA_TABS[(index + (event.key === 'ArrowRight' ? 1 : -1) + MEDIA_TABS.length) % MEDIA_TABS.length];
         showMedia(type);
         document.getElementById('media_tab_' + type).focus();
     });

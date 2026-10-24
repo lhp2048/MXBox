@@ -35,6 +35,54 @@
         android:clipChildren="false"
         android:focusable="false" />
 
+    <LinearLayout
+        android:id="@+id/clock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="48dp">
+
+        <TextView
+            android:id="@+id/clockTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFeatureSettings="tnum"
+            android:includeFontPadding="false"
+            android:shadowColor="#CC000000"
+            android:shadowDx="0"
+            android:shadowDy="2"
+            android:shadowRadius="16"
+            android:textColor="@android:color/white"
+            android:textSize="108sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/clockSolar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:shadowColor="#CC000000"
+            android:shadowDx="0"
+            android:shadowDy="1"
+            android:shadowRadius="8"
+            android:textColor="#F2F2F2"
+            android:textSize="32sp" />
+
+        <TextView
+            android:id="@+id/clockLunar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:shadowColor="#CC000000"
+            android:shadowDx="0"
+            android:shadowDy="1"
+            android:shadowRadius="8"
+            android:textColor="#D0D0D0"
+            android:textSize="28sp" />
+    </LinearLayout>
+
     <TextView
         android:id="@+id/resident"
         android:layout_width="match_parent"

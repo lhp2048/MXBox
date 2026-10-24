@@ -11,6 +11,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
 import android.util.Log;
+import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -142,6 +143,7 @@ public class App extends Application implements Application.ActivityLifecycleCal
     @Override
     public void onActivityResumed(@NonNull Activity activity) {
         if (activity != activity()) this.activity = activity;
+        activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         RuntimeModule.refresh();
         RuntimeInstaller.resumeUpdate(activity);
         Updater.get().notifyModules();
@@ -150,6 +152,7 @@ public class App extends Application implements Application.ActivityLifecycleCal
 
     @Override
     public void onActivityPaused(@NonNull Activity activity) {
+        activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         GlobalDanmaku.detach(activity);
         if (activity == activity()) this.activity = null;
     }

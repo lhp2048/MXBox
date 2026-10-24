@@ -182,8 +182,22 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
     private static int memoryChannel = RECOMMEND;
     private static int memoryIndex;
 
+    private static boolean alive;
+    private boolean entered;
+    private String pendingWord = "";
+
+    public static boolean isAlive() {
+        return alive;
+    }
+
     public static void start(Context context) {
-        context.startActivity(new Intent(context, BiliActivity.class));
+        start(context, "");
+    }
+
+    public static void start(Context context, String word) {
+        Intent intent = new Intent(context, BiliActivity.class);
+        if (word != null && !word.isEmpty()) intent.putExtra("word", word);
+        context.startActivity(intent);
     }
 
     @Override
@@ -198,6 +212,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
 
     @Override
     protected void initView(Bundle savedInstanceState) {
+        alive = true;
         playback = new BiliPlayback(this);
         binding.player.setPlayer(playback.player());
         listAdapter = new BiliVideoAdapter(R.layout.item_bili_row, this::onListClick, true);
@@ -247,6 +262,8 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
             return false;
         });
         focus(TABS);
+        String word = getIntent() == null ? "" : getIntent().getStringExtra("word");
+        pendingWord = word == null ? "" : word.trim();
         if (BiliSession.isLoggedIn()) enter();
         else showQr();
     }
@@ -255,7 +272,17 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         Task.execute(() -> {
             try {
                 BiliApi.refreshNav();
-                App.post(() -> { if (!isFinishing()) openRemembered(); });
+                App.post(() -> {
+                    if (isFinishing()) return;
+                    entered = true;
+                    if (!pendingWord.isEmpty()) {
+                        String word = pendingWord;
+                        pendingWord = "";
+                        applyRemoteSearch(word);
+                    } else {
+                        openRemembered();
+                    }
+                });
             } catch (IOException e) {
                 App.post(() -> { if (!isFinishing()) showQr(); });
             }
@@ -950,15 +977,23 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
             return;
         }
         if (event.type() != ServerEvent.Type.BILI) return;
-        String word = event.text() == null ? "" : event.text().trim();
+        applyRemoteSearch(event.text());
+    }
+
+    private void applyRemoteSearch(String word) {
+        word = word == null ? "" : word.trim();
         if (word.isEmpty()) return;
-        searchQuery = word;
-        binding.search.setText(word);
-        stopTyping();
         if (!BiliSession.isLoggedIn()) {
             Notify.show(getString(R.string.bili_qr));
             return;
         }
+        if (!entered) {
+            pendingWord = word;
+            return;
+        }
+        searchQuery = word;
+        binding.search.setText(word);
+        stopTyping();
         hide(binding.gridPanel);
         openBiliSearch();
         submitSearch();
@@ -995,6 +1030,13 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
         paintQuery();
         showWords();
         focusBiliKeys();
+    }
+
+    public boolean blocksCurtainSaver() {
+        if (playback == null) return false;
+        Player player = playback.player();
+        int state = player.getPlaybackState();
+        return player.getPlayWhenReady() && state != Player.STATE_IDLE && state != Player.STATE_ENDED;
     }
 
     private boolean shouldHoldPlayback() {
@@ -1869,6 +1911,7 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
 
     @Override
     protected void onDestroy() {
+        alive = false;
         polling = false;
         if (BiliSession.isLoggedIn()) {
             memoryReady = true;
@@ -1882,7 +1925,6 @@ public class BiliActivity extends BaseActivity implements Player.Listener, BiliK
 
     private void keepScreenOn(boolean on) {
         if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     private void detachPlayback() {

@@ -5,16 +5,21 @@ import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.os.Bundle;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.view.WindowCallbackWrapper;
 import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 
+import com.fongmi.android.tv.curtain.CurtainSaver;
 import com.fongmi.android.tv.ui.custom.CustomWallView;
 import com.fongmi.android.tv.utils.Util;
 
@@ -37,6 +42,45 @@ public abstract class BaseActivity extends AppCompatActivity {
         Util.hideSystemUI(this);
         setBackCallback();
         initEvent();
+        watchIdle();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        CurtainSaver.arm(this);
+    }
+
+    @Override
+    protected void onPause() {
+        CurtainSaver.disarm(this);
+        super.onPause();
+    }
+
+    private void watchIdle() {
+        Window window = getWindow();
+        Window.Callback callback = window.getCallback();
+        if (callback instanceof IdleCallback) return;
+        window.setCallback(new IdleCallback(callback));
+    }
+
+    private static final class IdleCallback extends WindowCallbackWrapper {
+
+        IdleCallback(Window.Callback callback) {
+            super(callback);
+        }
+
+        @Override
+        public boolean dispatchKeyEvent(KeyEvent event) {
+            CurtainSaver.touch();
+            return super.dispatchKeyEvent(event);
+        }
+
+        @Override
+        public boolean dispatchTouchEvent(MotionEvent event) {
+            CurtainSaver.touch();
+            return super.dispatchTouchEvent(event);
+        }
     }
 
     @Override
